@@ -176,7 +176,7 @@ all of it is always the cheapest plan. The numbers below were taken on 2026-11-1
 `postgres:18` container (PostgreSQL 18.7, default settings: `shared_buffers = 128MB`,
 `max_parallel_workers_per_gather = 2`) on a Windows 11 laptop with Docker Desktop:
 
-- migrations `V1` to `V6` applied, then 100,000 extra products generated with `generate_series`
+- migrations `V1` to `V6` applied, then 100,000 extra products inserted using `generate_series`
   (script at the end of this document; the data is not committed);
 - `product` table: 100,060 rows, 30 MB; GIN index: about 6.8 MB right after `CREATE INDEX`;
 - the search `zapatos de cuero` matches **229** rows (0.23 % of the table);
