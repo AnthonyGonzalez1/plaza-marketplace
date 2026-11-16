@@ -1,0 +1,71 @@
+name: images
+
+# Builds both container images and scans them for known vulnerabilities on every pull request.
+# On main, the scanned images are also published to GitHub Container Registry (GHCR).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Needed to push to ghcr.io with the built-in GITHUB_TOKEN (no personal token required).
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: plaza-store-api
+            context: services/store-api
+          - name: plaza-web
+            context: web
+    env:
+      # Registry paths must be lowercase.
+      IMAGE: ghcr.io/anthonygonzalez1/${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # "load" keeps the image in the runner's Docker so it can be scanned before any push.
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          load: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }},mode=max
+
+      # Fails the job on CRITICAL vulnerabilities that already have a fix available.
+      # The action is pinned to a commit instead of a tag: tags can be moved, commits cannot.
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ github.sha }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # One immutable tag per commit (used for deploys and rollbacks) plus a moving "latest".
+      - name: Push image
+        if: github.event_name == 'push'
+        run: docker push --all-tags "$IMAGE"
