@@ -63,6 +63,12 @@ Then open <http://plaza.localhost>. The script creates a one-node cluster, insta
 the ingress controller and deploys the Helm chart in `deploy/helm/plaza` (API, web app and a
 PostgreSQL StatefulSet). Port 80 of the machine must be free.
 
+## Deploy to production
+
+The same Helm chart runs on a single-node k3s server (ARM64) with HTTPS certificates from
+Let's Encrypt. CI publishes the images for amd64 and arm64. Step-by-step runbook:
+[docs/deploy.md](docs/deploy.md).
+
 ## Tech stack
 
 Java 25 · Spring Boot 4.1 · NestJS 12 · React 19 · TypeScript · PostgreSQL 18 · Redis 8 ·
@@ -74,6 +80,7 @@ GitHub Actions
 - [Roadmap](docs/ROADMAP.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Architecture decision records](docs/adr/)
+- [Production deploy runbook](docs/deploy.md)
 - [Progress log](docs/PROGRESS.md)
 
 ## License
