@@ -32,6 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # QEMU lets this amd64 runner execute the arm64 steps of the Dockerfiles (emulation).
+      - uses: docker/setup-qemu-action@v4
+
       - uses: docker/setup-buildx-action@v4
 
       # "load" keeps the image in the runner's Docker so it can be scanned before any push.
@@ -65,7 +68,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Builds the arm64 variant too (the production server is ARM) and pushes both under the
+      # same tags; each machine pulls the variant that matches its CPU. The amd64 layers come
+      # from the cache of the build above. Only the amd64 variant is scanned; both come from
+      # the same Dockerfile and base image versions.
       # One immutable tag per commit (used for deploys and rollbacks) plus a moving "latest".
-      - name: Push image
+      - name: Build for amd64 + arm64 and push
         if: github.event_name == 'push'
-        run: docker push --all-tags "$IMAGE"
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }},mode=max
