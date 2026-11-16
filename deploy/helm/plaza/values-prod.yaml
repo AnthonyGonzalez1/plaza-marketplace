@@ -1,0 +1,18 @@
+# Overrides for the production k3s server. Step-by-step instructions: docs/deploy.md.
+#
+# Three values are NOT in this file and are passed at deploy time:
+#   imageTag            commit to deploy (CI publishes one image tag per commit)
+#   ingress.host        public host name of the server
+#   postgres.password   kept in a file on the server, never in git
+
+# A commit tag never changes, so a node that already has the image does not download it again.
+imagePullPolicy: IfNotPresent
+
+postgres:
+  # k3s stores the volume on the server disk (its "local-path" storage class).
+  storage: 5Gi
+
+ingress:
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt-prod

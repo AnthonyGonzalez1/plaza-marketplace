@@ -1,0 +1,42 @@
+# Tells cert-manager how to get certificates. Applied once per cluster (docs/deploy.md).
+#
+# How a certificate is issued (ACME protocol, HTTP-01 challenge):
+#   1. cert-manager asks Let's Encrypt for a certificate for the host of an Ingress.
+#   2. Let's Encrypt answers with a random token and then requests
+#      http://<host>/.well-known/acme-challenge/<token> from the internet.
+#   3. cert-manager serves that token through a temporary Ingress. Only whoever controls the
+#      host can do that, which proves ownership.
+#   4. Let's Encrypt signs the certificate; cert-manager stores it in a Secret and renews it
+#      before it expires (certificates last 90 days).
+#
+# Use the staging issuer while testing: the production one has strict rate limits (a few
+# failed attempts can block the host name for hours). Staging certificates are not trusted
+# by browsers, they only prove that the flow works.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    # Secret where cert-manager keeps the key of its Let's Encrypt account.
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik
