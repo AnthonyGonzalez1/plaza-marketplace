@@ -1,0 +1,7 @@
+# Keep the build context small and never send local build output or IDE files to Docker.
+target/
+.idea/
+.vscode/
+*.iml
+.git/
+*.md

@@ -98,6 +98,8 @@
   </dependencies>
 
   <build>
+    <!-- Fixed jar name (target/store-api.jar) so the Dockerfile does not depend on the version. -->
+    <finalName>store-api</finalName>
     <plugins>
       <plugin>
         <groupId>org.springframework.boot</groupId>
