@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -196,6 +197,19 @@ class ProductSearchApiIntegrationTest {
         mockMvc.perform(products().param("storeId", "999999"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems", is(0)));
+    }
+
+    // Exercise S2 (docs/exercises/s2.md): implement the inStock filter, then remove @Disabled.
+    @Disabled("Exercise S2: the inStock filter does not exist yet")
+    @Test
+    void filtersByInStock() throws Exception {
+        // 3 of the 60 seed products have 0 units.
+        List<Integer> available =
+                JsonPath.read(
+                        body(products().param("inStock", "true").param("size", "100")),
+                        "$.items[*].available");
+
+        assertThat(available).hasSize(57).allMatch(units -> units > 0);
     }
 
     // ---- Sorting ----
