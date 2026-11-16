@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /services/store-api
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /services/store-api
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
