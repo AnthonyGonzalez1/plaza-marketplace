@@ -5,6 +5,50 @@ session can start without re-deriving context.
 
 ---
 
+## Session 3: Kubernetes locally (2026-11-16)
+
+### Done
+
+- `deploy/kind/`: one-node kind cluster config, Traefik values and `up.sh` / `down.sh`
+  (one command builds the images, loads them and installs everything).
+- Helm chart `deploy/helm/plaza`: Deployments and Services for `store-api` and `web`,
+  PostgreSQL StatefulSet with a PersistentVolumeClaim, ConfigMap, Secret and an Ingress that
+  routes `/api` and the API docs to `store-api` and everything else to `web`.
+- `store-api` pod: startup, liveness and readiness probes, memory requests and limits, non-root.
+- Verified on the laptop: `http://plaza.localhost` serves the catalog from the kind cluster.
+- CI: new `images` workflow builds both images, scans them with Trivy (fails on fixable
+  CRITICAL) and, on `main`, pushes them to GHCR; `helm-chart` job lints and renders the chart.
+- Dependabot now also covers the web image and the frontend packages (grouped weekly).
+
+### Decisions
+
+- The Ingress routes `/api` straight to `store-api`; the nginx proxy in the web image stays
+  only as a fallback.
+- PostgreSQL runs from a hand-written StatefulSet (no third-party chart) to keep it explainable.
+- The database password is a required chart value and is never committed for real
+  environments; `values-local.yaml` holds a throwaway one.
+- Images run with numeric user ids: Kubernetes cannot verify `runAsNonRoot` against a user
+  name (this broke the first deploy).
+- The web image runs `apk upgrade` because the nginx base image shipped a fixable CRITICAL
+  vulnerability.
+- The Trivy action is pinned to a commit SHA.
+
+### Pending
+
+- Anthony: exercises in `docs/exercises/s3.md` (web probes and resources, breaking probes,
+  self-healing and rollback).
+- The push to GHCR runs for the first time when this PR is merged; then check that both
+  packages exist and make them public (needed to pull them from the server in S4).
+- Images are amd64 only; arm64 is added in S4 for the Oracle VM.
+
+### Next step
+
+Start **S4 (issue #4)**: Anthony creates the Oracle Cloud VM (Ampere A1, 2 OCPU, 12 GB) and
+points a domain at it; then branch `feat/prod-k3s`: multi-arch images, `values-prod.yaml`,
+cert-manager with Let's Encrypt, `docs/deploy.md` runbook and the first `helm upgrade`.
+
+---
+
 ## Sessions 1-2: Catalog API, search and web app (2026-11-16)
 
 ### Done

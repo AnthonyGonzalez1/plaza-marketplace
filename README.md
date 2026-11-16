@@ -50,6 +50,19 @@ The database starts with demo data. Ports and credentials can be changed by copy
 `.env.example` to `.env`. On Windows, Docker runs inside WSL 2; if it takes too much memory,
 limit it with a `%UserProfile%\.wslconfig` file containing `[wsl2]` and `memory=6GB`.
 
+## Run on Kubernetes locally
+
+Requires Docker, [kind](https://kind.sigs.k8s.io/), kubectl and [Helm](https://helm.sh/):
+
+```bash
+deploy/kind/up.sh      # creates the cluster, builds the images and installs the chart
+deploy/kind/down.sh    # deletes the cluster
+```
+
+Then open <http://plaza.localhost>. The script creates a one-node cluster, installs Traefik as
+the ingress controller and deploys the Helm chart in `deploy/helm/plaza` (API, web app and a
+PostgreSQL StatefulSet). Port 80 of the machine must be free.
+
 ## Tech stack
 
 Java 25 · Spring Boot 4.1 · NestJS 12 · React 19 · TypeScript · PostgreSQL 18 · Redis 8 ·
