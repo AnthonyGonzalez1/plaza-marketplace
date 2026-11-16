@@ -38,8 +38,19 @@ jobs:
 
       - uses: azure/setup-helm@v5
 
-      - name: Lint chart
-        run: helm lint deploy/helm/plaza --values deploy/helm/plaza/values-local.yaml --strict
+      - name: Lint and render chart (local values)
+        run: |
+          helm lint deploy/helm/plaza --values deploy/helm/plaza/values-local.yaml --strict
+          helm template plaza deploy/helm/plaza --values deploy/helm/plaza/values-local.yaml > /dev/null
 
-      - name: Render chart
-        run: helm template plaza deploy/helm/plaza --values deploy/helm/plaza/values-local.yaml > /dev/null
+      # The production file leaves three values to deploy time; placeholders stand in here.
+      - name: Lint and render chart (production values)
+        env:
+          PROD_ARGS: >-
+            --values deploy/helm/plaza/values-prod.yaml
+            --set imageTag=ci
+            --set ingress.host=plaza.example.com
+            --set postgres.password=ci
+        run: |
+          helm lint deploy/helm/plaza $PROD_ARGS --strict
+          helm template plaza deploy/helm/plaza $PROD_ARGS > /dev/null

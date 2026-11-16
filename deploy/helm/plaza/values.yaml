@@ -1,6 +1,6 @@
 # Default values. Each environment overrides only what differs:
 #   values-local.yaml  -> kind cluster on a laptop
-#   values-prod.yaml   -> k3s server (added in S4)
+#   values-prod.yaml   -> k3s server (see docs/deploy.md)
 
 # Tag used for both application images (CI publishes one tag per commit).
 imageTag: latest
@@ -52,3 +52,8 @@ ingress:
   # Which ingress controller handles this Ingress. Traefik in kind and in k3s.
   className: traefik
   host: plaza.localhost
+  tls:
+    # HTTPS with a certificate issued by cert-manager. Off locally (plain HTTP on localhost).
+    enabled: false
+    # Name of the cert-manager ClusterIssuer that signs the certificate.
+    clusterIssuer: letsencrypt-prod
