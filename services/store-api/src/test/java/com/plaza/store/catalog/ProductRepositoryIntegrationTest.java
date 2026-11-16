@@ -7,42 +7,76 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
-/** Runs the repository queries against a real PostgreSQL loaded with the seed data. */
+/**
+ * Runs the JPA repositories against a real PostgreSQL loaded with the seed data. On purpose there
+ * is no {@code @Transactional} here: the product is read after the repository call returned, as the
+ * API does, so the test fails if store or category were not loaded by the query.
+ */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-@Transactional
 class ProductRepositoryIntegrationTest {
 
     @Autowired private ProductRepository productRepository;
     @Autowired private StoreRepository storeRepository;
+    @Autowired private CategoryRepository categoryRepository;
+    @Autowired private InventoryRepository inventoryRepository;
+    @Autowired private JdbcClient jdbc;
 
     @Test
-    void findByStoreIdReturnsOnlyProductsOfThatStore() {
-        Store store =
-                storeRepository.findAllByOrderByNameAsc().stream()
-                        .filter(s -> s.getSlug().equals("cafe-la-palma"))
-                        .findFirst()
-                        .orElseThrow();
+    void findByIdLoadsStoreAndCategory() {
+        long id = productId("zapato-casual-de-gamuza");
 
-        Page<Product> page =
-                productRepository.findByStoreId(store.getId(), PageRequest.of(0, 3, Sort.by("id")));
+        Product product = productRepository.findById(id).orElseThrow();
 
-        assertThat(page.getTotalElements()).isEqualTo(4);
-        assertThat(page.getContent()).hasSize(3);
-        assertThat(page.getContent())
-                .allSatisfy(product ->
-                        assertThat(product.getStore().getSlug()).isEqualTo("cafe-la-palma"));
+        assertThat(product.getName()).isEqualTo("Zapato casual de gamuza");
+        assertThat(product.getPrice()).isEqualByComparingTo("165000");
+        assertThat(product.getStore().getSlug()).isEqualTo("calzado-el-caminante");
+        assertThat(product.getCategory().getSlug()).isEqualTo("calzado");
+    }
+
+    @Test
+    void findByIdOfUnknownProductIsEmpty() {
+        assertThat(productRepository.findById(999_999L)).isEmpty();
+    }
+
+    @Test
+    void inventoryIsFoundByProductId() {
+        long id = productId("canasto-de-werregue-pequeno");
+
+        assertThat(inventoryRepository.findById(id).orElseThrow().getAvailable()).isEqualTo(1);
     }
 
     @Test
     void storesAreOrderedByName() {
         assertThat(storeRepository.findAllByOrderByNameAsc())
                 .extracting(Store::getName)
-                .containsExactly("Café La Palma", "Dulces del Valle", "Tejidos Doña Rosa");
+                .containsExactly(
+                        "Café La Palma",
+                        "Calzado El Caminante",
+                        "Dulces del Valle",
+                        "Tejidos Doña Rosa");
+    }
+
+    @Test
+    void categoriesAreOrderedByName() {
+        assertThat(categoryRepository.findAllByOrderByNameAsc())
+                .extracting(Category::getSlug)
+                .containsExactly(
+                        "accesorios",
+                        "cafe-y-bebidas",
+                        "calzado",
+                        "despensa",
+                        "dulces-y-postres",
+                        "hogar-y-cocina",
+                        "ropa-y-tejidos");
+    }
+
+    private long productId(String slug) {
+        return jdbc.sql("SELECT id FROM product WHERE slug = :slug")
+                .param("slug", slug)
+                .query(Long.class)
+                .single();
     }
 }

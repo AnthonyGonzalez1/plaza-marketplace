@@ -1,6 +1,5 @@
 package com.plaza.store.catalog;
 
-import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -22,7 +21,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Calls the HTTP endpoints through the whole application (controller, service, repository) with a
- * real PostgreSQL. MockMvc sends the requests without opening a network port.
+ * real PostgreSQL. MockMvc sends the requests without opening a network port. Search, filters and
+ * sorting have their own class: {@link ProductSearchApiIntegrationTest}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -37,22 +37,22 @@ class ProductApiIntegrationTest {
         mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.items", hasSize(12)))
+                .andExpect(jsonPath("$.items", hasSize(20)))
                 .andExpect(jsonPath("$.page", is(0)))
                 .andExpect(jsonPath("$.size", is(20)))
-                .andExpect(jsonPath("$.totalItems", is(12)))
-                .andExpect(jsonPath("$.totalPages", is(1)));
+                .andExpect(jsonPath("$.totalItems", is(60)))
+                .andExpect(jsonPath("$.totalPages", is(3)));
     }
 
     @Test
     void returnsTheRequestedPage() throws Exception {
-        // 12 products in pages of 5: page 2 is the last one and has 2 items.
-        mockMvc.perform(get("/api/v1/products").param("page", "2").param("size", "5"))
+        // 60 products in pages of 25: page 2 is the last one and has 10 items.
+        mockMvc.perform(get("/api/v1/products").param("page", "2").param("size", "25"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andExpect(jsonPath("$.items", hasSize(10)))
                 .andExpect(jsonPath("$.page", is(2)))
-                .andExpect(jsonPath("$.size", is(5)))
-                .andExpect(jsonPath("$.totalItems", is(12)))
+                .andExpect(jsonPath("$.size", is(25)))
+                .andExpect(jsonPath("$.totalItems", is(60)))
                 .andExpect(jsonPath("$.totalPages", is(3)));
     }
 
@@ -61,11 +61,37 @@ class ProductApiIntegrationTest {
         mockMvc.perform(get("/api/v1/products").param("page", "9"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(0)))
-                .andExpect(jsonPath("$.totalItems", is(12)));
+                .andExpect(jsonPath("$.totalItems", is(60)));
     }
 
     @Test
-    void productHasTheContractShape() throws Exception {
+    void listItemHasTheContractShape() throws Exception {
+        // The only product that costs exactly 230000 is the werregue basket, with 1 unit left.
+        mockMvc.perform(
+                        get("/api/v1/products")
+                                .param("minPrice", "230000")
+                                .param("maxPrice", "230000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].id").isNumber())
+                .andExpect(jsonPath("$.items[0].name", is("Canasto de werregue pequeño")))
+                .andExpect(jsonPath("$.items[0].slug", is("canasto-de-werregue-pequeno")))
+                .andExpect(jsonPath("$.items[0].price", is(230000.00)))
+                .andExpect(jsonPath("$.items[0].currency", is("COP")))
+                .andExpect(jsonPath("$.items[0].imageUrl", nullValue()))
+                .andExpect(jsonPath("$.items[0].available", is(1)))
+                .andExpect(jsonPath("$.items[0].store.id").isNumber())
+                .andExpect(jsonPath("$.items[0].store.name", is("Tejidos Doña Rosa")))
+                .andExpect(jsonPath("$.items[0].store.slug", is("tejidos-dona-rosa")))
+                .andExpect(jsonPath("$.items[0].category.id").isNumber())
+                .andExpect(jsonPath("$.items[0].category.name", is("Hogar y cocina")))
+                .andExpect(jsonPath("$.items[0].category.slug", is("hogar-y-cocina")))
+                // The description belongs to the detail endpoint only.
+                .andExpect(jsonPath("$.items[0].description").doesNotExist());
+    }
+
+    @Test
+    void productDetailHasTheContractShape() throws Exception {
         long id = productId("cafe-molido-quindio-500g");
 
         mockMvc.perform(get("/api/v1/products/{id}", id))
@@ -77,23 +103,18 @@ class ProductApiIntegrationTest {
                 .andExpect(jsonPath("$.price", is(32000.00)))
                 .andExpect(jsonPath("$.currency", is("COP")))
                 .andExpect(jsonPath("$.imageUrl", nullValue()))
-                .andExpect(jsonPath("$.available", is(0)))
+                .andExpect(jsonPath("$.available", is(20)))
                 .andExpect(jsonPath("$.store.name", is("Café La Palma")))
                 .andExpect(jsonPath("$.store.slug", is("cafe-la-palma")))
-                .andExpect(jsonPath("$.category", nullValue()));
+                .andExpect(jsonPath("$.category.name", is("Café y bebidas")))
+                .andExpect(jsonPath("$.category.slug", is("cafe-y-bebidas")));
     }
 
     @Test
-    void filtersByStore() throws Exception {
-        long storeId =
-                jdbc.sql("SELECT id FROM store WHERE slug = 'dulces-del-valle'")
-                        .query(Long.class)
-                        .single();
-
-        mockMvc.perform(get("/api/v1/products").param("storeId", String.valueOf(storeId)))
+    void soldOutProductHasZeroAvailable() throws Exception {
+        mockMvc.perform(get("/api/v1/products/{id}", productId("ancheta-de-dulces-tipicos")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalItems", is(4)))
-                .andExpect(jsonPath("$.items[*].store.slug", everyItem(is("dulces-del-valle"))));
+                .andExpect(jsonPath("$.available", is(0)));
     }
 
     @Test
@@ -129,10 +150,21 @@ class ProductApiIntegrationTest {
     void listsStores() throws Exception {
         mockMvc.perform(get("/api/v1/stores"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$", hasSize(4)))
+                .andExpect(jsonPath("$[0].id").isNumber())
                 .andExpect(jsonPath("$[0].name", is("Café La Palma")))
                 .andExpect(jsonPath("$[0].slug", is("cafe-la-palma")))
                 .andExpect(jsonPath("$[0].description").isNotEmpty());
+    }
+
+    @Test
+    void listsCategories() throws Exception {
+        mockMvc.perform(get("/api/v1/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(7)))
+                .andExpect(jsonPath("$[0].id").isNumber())
+                .andExpect(jsonPath("$[0].name", is("Accesorios")))
+                .andExpect(jsonPath("$[0].slug", is("accesorios")));
     }
 
     @Test
@@ -146,7 +178,8 @@ class ProductApiIntegrationTest {
     void publishesTheOpenApiSpec() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/api/v1/products']").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/products']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/categories']").exists());
     }
 
     private long productId(String slug) {
