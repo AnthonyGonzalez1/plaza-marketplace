@@ -18,6 +18,13 @@ RUN pnpm build
 # ---- Stage 2: serve them with nginx running as a non-root user ----------------------------
 FROM nginxinc/nginx-unprivileged:1.30.6-alpine
 
+# Install the security fixes published after the base image was built (the image scan in CI
+# fails on fixable critical vulnerabilities). Needs root for a moment, then goes back to the
+# unprivileged nginx user of the base image (uid 101).
+USER root
+RUN apk upgrade --no-cache
+USER 101
+
 # Where nginx forwards /api/ (and the API docs). Override it at run time with -e API_UPSTREAM.
 ENV API_UPSTREAM=http://store-api:8080
 # Makes the image entrypoint export NGINX_LOCAL_RESOLVERS (the DNS servers of the container),
