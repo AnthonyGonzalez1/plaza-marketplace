@@ -10,6 +10,20 @@ updates:
     schedule:
       interval: weekly
 
+  - package-ecosystem: docker
+    directory: /web
+    schedule:
+      interval: weekly
+
+  # One pull request per week for all frontend packages, instead of one per package.
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      web-dependencies:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
