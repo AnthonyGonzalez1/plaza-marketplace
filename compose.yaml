@@ -1,0 +1,43 @@
+# Local development stack. Start everything with: docker compose up --build
+# Values come from a .env file next to this one (copy .env.example); every variable has a default.
+
+name: plaza
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${PLAZA_DB_NAME:-plaza}
+      POSTGRES_USER: ${PLAZA_DB_USER:-plaza}
+      POSTGRES_PASSWORD: ${PLAZA_DB_PASSWORD:-plaza}
+    ports:
+      # Published so the app can also run outside Docker (./mvnw spring-boot:run) and for psql.
+      - "${PLAZA_DB_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18 images keep the data under /var/lib/postgresql/<major>/, so the volume is
+      # mounted one level higher than in older versions.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  store-api:
+    build: services/store-api
+    environment:
+      # Inside the compose network the database host is the service name, on its internal port.
+      PLAZA_DB_URL: jdbc:postgresql://postgres:5432/${PLAZA_DB_NAME:-plaza}
+      PLAZA_DB_USER: ${PLAZA_DB_USER:-plaza}
+      PLAZA_DB_PASSWORD: ${PLAZA_DB_PASSWORD:-plaza}
+      PLAZA_CORS_ALLOWED_ORIGINS: ${PLAZA_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+    ports:
+      - "${PLAZA_API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        # Wait until PostgreSQL accepts connections, not only until its container starts.
+        condition: service_healthy
+
+volumes:
+  postgres-data:
