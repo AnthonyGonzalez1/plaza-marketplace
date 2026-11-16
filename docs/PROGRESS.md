@@ -5,6 +5,55 @@ session can start without re-deriving context.
 
 ---
 
+## Session 4 (part 1): production deploy prepared (2026-11-16)
+
+The repository side of S4 is done. The server does not exist yet, so nothing here has run on a
+real k3s cluster.
+
+### Done
+
+- Images are built for amd64 and arm64 and pushed as one multi-architecture tag. The build
+  stages run on the build machine's CPU (`--platform=$BUILDPLATFORM`); only the runtime stage
+  is emulated.
+- Chart: optional HTTPS (`ingress.tls`): cert-manager annotation, `tls` block and a Traefik
+  Middleware that redirects HTTP to HTTPS. `values-prod.yaml` enables it.
+- `deploy/k3s/cluster-issuer.yaml`: Let's Encrypt staging and production issuers (HTTP-01).
+- `docs/deploy.md`: runbook from an empty Oracle account to `https://<host>`, plus upgrade,
+  rollback, troubleshooting and costs.
+- CI also lints and renders the chart with the production values.
+- Checked on the laptop: both images build and start for arm64 under emulation; with
+  `ingress.tls.enabled=true` on kind, HTTP answers `301` to HTTPS and cert-manager creates
+  the Certificate; the issuers pass a server-side dry run with cert-manager v1.21.3.
+- GHCR: both packages exist and are public (first push happened when S3 was merged).
+
+### Decisions
+
+- Deploys run on the server over SSH; the Kubernetes API port stays closed to the internet.
+- The database password is generated on the server and kept in a file there, outside git.
+- The redirect to HTTPS is a Middleware inside the chart instead of a change to the Traefik
+  bundled with k3s: it travels with the release and needs no cluster-level configuration.
+- Only the amd64 image variant is scanned by Trivy; both variants come from one Dockerfile.
+- No email in the issuers: it is optional for Let's Encrypt and keeps personal data out of git.
+
+### Pending
+
+- Not verified: the multi-architecture push (first run when this PR is merged), a real
+  Let's Encrypt certificate, and the firewall commands of the runbook on Oracle's Ubuntu image.
+- Anthony: create the Oracle Cloud account and follow `docs/deploy.md` (exercises in
+  `docs/exercises/s4.md`); note anything that differs from the runbook.
+- After the first deploy: add the live URL to the README and close issue #4.
+- `postgres.storage` cannot be changed after the first install (StatefulSet volume claims are
+  immutable); 5Gi is set for production.
+
+### Next step
+
+Anthony runs sections 1-6 of `docs/deploy.md`. Then **S4 part 2** (short): fix the runbook
+with what he found, add the live URL to the README, close issue #4. In parallel **S5 (issue
+#5)** can start: branch `feat/cart-checkout`, Redis cart, `orders` migrations and the
+conditional stock update with its concurrency test.
+
+---
+
 ## Session 3: Kubernetes locally (2026-11-16)
 
 ### Done
