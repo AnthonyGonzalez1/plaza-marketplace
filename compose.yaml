@@ -39,5 +39,15 @@ services:
         # Wait until PostgreSQL accepts connections, not only until its container starts.
         condition: service_healthy
 
+  web:
+    build: web
+    environment:
+      # nginx serves the React app and forwards /api to the store-api service.
+      API_UPSTREAM: http://store-api:8080
+    ports:
+      - "${PLAZA_WEB_PORT:-3000}:8080"
+    depends_on:
+      - store-api
+
 volumes:
   postgres-data:

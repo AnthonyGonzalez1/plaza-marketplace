@@ -41,7 +41,8 @@ docker compose up --build
 
 Then open:
 
-- Products: <http://localhost:8080/api/v1/products>
+- Web app: <http://localhost:3000>
+- Products API: <http://localhost:8080/api/v1/products>
 - API docs (Swagger UI): <http://localhost:8080/swagger-ui.html>
 - Health: <http://localhost:8080/actuator/health>
 
