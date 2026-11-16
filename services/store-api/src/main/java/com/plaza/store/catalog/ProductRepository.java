@@ -1,26 +1,15 @@
 package com.plaza.store.catalog;
 
 import java.util.Optional;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-/**
- * {@code @EntityGraph(attributePaths = "store")} makes each query load the product and its store
- * with one JOIN. Without it, reading the store of every product in a page would run one extra query
- * per product (the "N+1 queries" problem).
- */
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    // @EntityGraph makes this query load the product together with its store and category in one
+    // SELECT with JOINs. Without it, reading product.getStore() later would need another query,
+    // and would fail outside the transaction because open-in-view is off.
     @Override
-    @EntityGraph(attributePaths = "store")
-    Page<Product> findAll(Pageable pageable);
-
-    @EntityGraph(attributePaths = "store")
-    Page<Product> findByStoreId(Long storeId, Pageable pageable);
-
-    @Override
-    @EntityGraph(attributePaths = "store")
+    @EntityGraph(attributePaths = {"store", "category"})
     Optional<Product> findById(Long id);
 }
