@@ -23,8 +23,11 @@ FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 # Run as an unprivileged user: a bug in the app must not give root inside the container.
-RUN groupadd --system plaza && useradd --system --gid plaza --no-create-home plaza
-USER plaza
+# The user is referenced by its numeric id because Kubernetes can only verify
+# "runAsNonRoot" against a number, not against a user name.
+RUN groupadd --system --gid 10001 plaza \
+    && useradd --system --uid 10001 --gid plaza --no-create-home plaza
+USER 10001:10001
 
 COPY --from=build /workspace/extracted/dependencies/ ./
 COPY --from=build /workspace/extracted/spring-boot-loader/ ./
