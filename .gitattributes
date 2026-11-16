@@ -1,0 +1,11 @@
+# Normalize line endings: the repo is edited on Windows but runs in Linux containers and CI.
+* text=auto eol=lf
+
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+*.jar binary
+*.png binary
+*.jpg binary
+*.gif binary
