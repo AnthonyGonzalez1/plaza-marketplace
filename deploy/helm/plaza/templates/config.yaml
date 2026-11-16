@@ -1,0 +1,22 @@
+# Non-secret configuration, shared as environment variables.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+data:
+  POSTGRES_DB: {{ .Values.postgres.database | quote }}
+  POSTGRES_USER: {{ .Values.postgres.user | quote }}
+---
+# Secret values. Kubernetes only base64-encodes them: the protection comes from access rules
+# on Secret objects, not from the encoding. The password is never stored in git.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-secrets
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: {{ required "postgres.password is required (use --set postgres.password=...)" .Values.postgres.password | quote }}

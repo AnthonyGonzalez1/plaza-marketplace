@@ -1,0 +1,9 @@
+Plaza was installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+{{- if .Values.ingress.enabled }}
+
+  Web app:   http://{{ .Values.ingress.host }}
+  API docs:  http://{{ .Values.ingress.host }}/swagger-ui.html
+{{- end }}
+
+  Pods:      kubectl -n {{ .Release.Namespace }} get pods
+  API logs:  kubectl -n {{ .Release.Namespace }} logs deploy/{{ .Release.Name }}-store-api

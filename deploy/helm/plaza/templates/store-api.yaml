@@ -1,0 +1,97 @@
+{{- $selector := dict "root" . "component" "store-api" }}
+# Stable address for the API pods: other pods call http://<release>-store-api:8080 and the
+# Service spreads the requests over the pods that are ready.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-store-api
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "plaza.selectorLabels" $selector | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-store-api
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.storeApi.replicas }}
+  selector:
+    matchLabels:
+      {{- include "plaza.selectorLabels" $selector | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "plaza.selectorLabels" $selector | nindent 8 }}
+      annotations:
+        # Pods do not notice when a ConfigMap or Secret changes. Putting a hash of that file
+        # in the pod template makes any config change roll out new pods.
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      # Matches the 20 s graceful shutdown of the application, plus a margin.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: store-api
+          image: "{{ .Values.storeApi.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PLAZA_DB_URL
+              value: jdbc:postgresql://{{ .Release.Name }}-postgres:5432/{{ .Values.postgres.database }}
+            - name: PLAZA_DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-config
+                  key: POSTGRES_USER
+            - name: PLAZA_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: POSTGRES_PASSWORD
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.storeApi.springProfile | quote }}
+            {{- if .Values.storeApi.corsAllowedOrigins }}
+            - name: PLAZA_CORS_ALLOWED_ORIGINS
+              value: {{ .Values.storeApi.corsAllowedOrigins | quote }}
+            {{- end }}
+            # Let the JVM size its heap from the container memory limit, not from the node.
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=70"
+          # Three probes, three questions:
+          #   startup:   has the app finished starting? The other two wait for it. A JVM can
+          #              take a while: here up to 5 s x 30 = 150 s.
+          #   liveness:  is it stuck? If this fails, the container is restarted.
+          #   readiness: can it serve requests right now (database reachable)? If this fails,
+          #              the pod is removed from the Service but NOT restarted.
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.storeApi.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false

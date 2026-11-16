@@ -1,0 +1,54 @@
+# Default values. Each environment overrides only what differs:
+#   values-local.yaml  -> kind cluster on a laptop
+#   values-prod.yaml   -> k3s server (added in S4)
+
+# Tag used for both application images (CI publishes one tag per commit).
+imageTag: latest
+imagePullPolicy: IfNotPresent
+
+# DNS suffix of the cluster. Only the web container needs it (see templates/web.yaml).
+clusterDomain: cluster.local
+
+storeApi:
+  image: ghcr.io/anthonygonzalez1/plaza-store-api
+  replicas: 1
+  springProfile: prod
+  # Browser origins allowed to call the API directly. Not needed while the web app and the API
+  # share the same host through the Ingress.
+  corsAllowedOrigins: ""
+  resources:
+    # requests: what the scheduler reserves for the pod. limits: the hard ceiling.
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      # Above this the container is killed (OOMKilled). No CPU limit on purpose: a CPU limit
+      # throttles the JVM during startup, and CPU, unlike memory, can simply be shared.
+      memory: 768Mi
+
+web:
+  image: ghcr.io/anthonygonzalez1/plaza-web
+  replicas: 1
+  # Exercise S3: probes and resources for the web pod are added in docs/exercises/s3.md.
+  resources: {}
+
+postgres:
+  image: postgres:18
+  database: plaza
+  user: plaza
+  # Required. Never commit a real password: pass it at deploy time with
+  #   --set postgres.password=...   (or a values file kept out of git)
+  password: ""
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+ingress:
+  enabled: true
+  # Which ingress controller handles this Ingress. Traefik in kind and in k3s.
+  className: traefik
+  host: plaza.localhost

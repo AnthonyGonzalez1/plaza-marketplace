@@ -1,0 +1,17 @@
+# Overrides for the local kind cluster (deploy/kind/up.sh).
+
+# Images are built on the laptop and loaded into the cluster, not pulled from a registry.
+imageTag: local
+imagePullPolicy: Never
+
+storeApi:
+  image: plaza-store-api
+web:
+  image: plaza-web
+
+postgres:
+  # Throwaway local database: this password protects nothing.
+  password: plaza
+
+ingress:
+  host: plaza.localhost
