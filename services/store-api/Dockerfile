@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build stage: full JDK + Maven wrapper, produces the jar ----
-FROM eclipse-temurin:25-jdk AS build
+# The image is published for amd64 (laptops, CI) and arm64 (the production server). A jar is
+# the same for every CPU, so this stage always runs on the CPU of the build machine
+# (BUILDPLATFORM) instead of being emulated; only the small runtime stage is per architecture.
+FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 
 # Copy only what defines the dependencies first. Docker caches this layer, so dependencies are

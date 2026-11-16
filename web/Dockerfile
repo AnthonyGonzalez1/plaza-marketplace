@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # ---- Stage 1: build the static files with Node + pnpm -------------------------------------
-FROM node:26-alpine AS build
+# The output is static files, identical for every CPU: build them on the CPU of the build
+# machine (BUILDPLATFORM) even when the final image targets another architecture.
+FROM --platform=$BUILDPLATFORM node:26-alpine AS build
 WORKDIR /app
 
 # Same pnpm version as the "packageManager" field in package.json.
