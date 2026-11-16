@@ -4,10 +4,6 @@ import com.plaza.store.shared.NotFoundException;
 import com.plaza.store.shared.PageParams;
 import com.plaza.store.shared.PageResponse;
 import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,28 +12,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CatalogService {
 
+    private final ProductSearchRepository productSearchRepository;
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
+    private final CategoryRepository categoryRepository;
 
-    public CatalogService(ProductRepository productRepository, StoreRepository storeRepository) {
+    public CatalogService(
+            ProductSearchRepository productSearchRepository,
+            ProductRepository productRepository,
+            InventoryRepository inventoryRepository,
+            StoreRepository storeRepository,
+            CategoryRepository categoryRepository) {
+        this.productSearchRepository = productSearchRepository;
         this.productRepository = productRepository;
+        this.inventoryRepository = inventoryRepository;
         this.storeRepository = storeRepository;
+        this.categoryRepository = categoryRepository;
     }
 
-    public PageResponse<ProductSummary> listProducts(Long storeId, PageParams pageParams) {
-        // A fixed order is required: without ORDER BY the database may return rows in any
-        // order, and two pages could then repeat or skip products.
-        Pageable pageable =
-                PageRequest.of(pageParams.page(), pageParams.size(), Sort.by("id").descending());
-
-        Page<Product> products =
-                storeId == null
-                        ? productRepository.findAll(pageable)
-                        : productRepository.findByStoreId(storeId, pageable);
-
-        List<ProductSummary> items =
-                products.getContent().stream().map(CatalogMapper::toSummary).toList();
-        return PageResponse.of(items, pageParams, products.getTotalElements());
+    public PageResponse<ProductSummary> searchProducts(
+            ProductSearchCriteria criteria, PageParams pageParams) {
+        // Two queries: the rows of the requested page, and the total used for totalPages.
+        List<ProductSummary> items = productSearchRepository.search(criteria, pageParams);
+        long totalItems = productSearchRepository.count(criteria);
+        return PageResponse.of(items, pageParams, totalItems);
     }
 
     public ProductDetail getProduct(long id) {
@@ -45,12 +44,20 @@ public class CatalogService {
                 productRepository
                         .findById(id)
                         .orElseThrow(() -> new NotFoundException("Product " + id + " not found"));
-        return CatalogMapper.toDetail(product);
+        // A product without an inventory row simply has nothing to sell.
+        int available = inventoryRepository.findById(id).map(Inventory::getAvailable).orElse(0);
+        return CatalogMapper.toDetail(product, available);
     }
 
     public List<StoreResponse> listStores() {
         return storeRepository.findAllByOrderByNameAsc().stream()
                 .map(CatalogMapper::toStoreResponse)
+                .toList();
+    }
+
+    public List<CategoryResponse> listCategories() {
+        return categoryRepository.findAllByOrderByNameAsc().stream()
+                .map(CatalogMapper::toCategoryResponse)
                 .toList();
     }
 }

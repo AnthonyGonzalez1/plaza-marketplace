@@ -1,5 +1,6 @@
 package com.plaza.store.catalog;
 
+import com.plaza.store.catalog.ProductSummary.CategoryRef;
 import com.plaza.store.catalog.ProductSummary.StoreRef;
 
 /** Converts JPA entities into the records returned by the API. Plain static methods, no magic. */
@@ -10,22 +11,9 @@ final class CatalogMapper {
 
     private CatalogMapper() {}
 
-    // Categories, images and stock do not exist yet in the schema, so the contract fields
-    // category, imageUrl and available are returned as null / 0 until they are added.
-    static ProductSummary toSummary(Product product) {
-        return new ProductSummary(
-                product.getId(),
-                product.getName(),
-                product.getSlug(),
-                product.getPrice(),
-                CURRENCY,
-                null,
-                0,
-                toStoreRef(product.getStore()),
-                null);
-    }
-
-    static ProductDetail toDetail(Product product) {
+    static ProductDetail toDetail(Product product, int available) {
+        Store store = product.getStore();
+        Category category = product.getCategory();
         return new ProductDetail(
                 product.getId(),
                 product.getName(),
@@ -33,10 +21,10 @@ final class CatalogMapper {
                 product.getDescription(),
                 product.getPrice(),
                 CURRENCY,
-                null,
-                0,
-                toStoreRef(product.getStore()),
-                null);
+                product.getImageUrl(),
+                available,
+                new StoreRef(store.getId(), store.getName(), store.getSlug()),
+                new CategoryRef(category.getId(), category.getName(), category.getSlug()));
     }
 
     static StoreResponse toStoreResponse(Store store) {
@@ -44,7 +32,7 @@ final class CatalogMapper {
                 store.getId(), store.getName(), store.getSlug(), store.getDescription());
     }
 
-    private static StoreRef toStoreRef(Store store) {
-        return new StoreRef(store.getId(), store.getName(), store.getSlug());
+    static CategoryResponse toCategoryResponse(Category category) {
+        return new CategoryResponse(category.getId(), category.getName(), category.getSlug());
     }
 }

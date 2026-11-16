@@ -25,8 +25,9 @@ class SchemaIntegrationTest {
 
     private static final String INSERT_PRODUCT =
             """
-            INSERT INTO product (store_id, name, slug, description, price)
-            VALUES (:storeId, :name, :slug, 'Producto de prueba', :price)
+            INSERT INTO product (store_id, category_id, name, slug, description, price)
+            VALUES (:storeId, (SELECT min(id) FROM category), :name, :slug, 'Producto de prueba',
+                    :price)
             """;
 
     @Autowired private JdbcClient jdbc;
@@ -37,12 +38,13 @@ class SchemaIntegrationTest {
                 jdbc.sql("SELECT count(*) FROM flyway_schema_history WHERE NOT success")
                         .query(Integer.class)
                         .single();
-        int stores = jdbc.sql("SELECT count(*) FROM store").query(Integer.class).single();
-        int products = jdbc.sql("SELECT count(*) FROM product").query(Integer.class).single();
 
         assertThat(failedMigrations).isZero();
-        assertThat(stores).isEqualTo(3);
-        assertThat(products).isEqualTo(12);
+        assertThat(count("store")).isEqualTo(4);
+        assertThat(count("category")).isEqualTo(7);
+        assertThat(count("product")).isEqualTo(60);
+        // Every product has its stock row.
+        assertThat(count("inventory")).isEqualTo(60);
     }
 
     @Test
@@ -69,6 +71,48 @@ class SchemaIntegrationTest {
                 .hasMessageContaining("fk_product_store");
     }
 
+    @Test
+    void rejectsProductWithoutCategory() {
+        assertThatThrownBy(() ->
+                        jdbc.sql(
+                                        """
+                                        INSERT INTO product (store_id, name, slug, description, price)
+                                        VALUES (:storeId, 'Sin categoría', 'sin-categoria', 'x', 1000)
+                                        """)
+                                .param("storeId", anyStoreId())
+                                .update())
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("category_id");
+    }
+
+    @Test
+    void rejectsNegativeStock() {
+        assertThatThrownBy(() ->
+                        jdbc.sql(
+                                        """
+                                        UPDATE inventory SET available = -1
+                                        WHERE product_id = (SELECT min(id) FROM product)
+                                        """)
+                                .update())
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("ck_inventory_available_not_negative");
+    }
+
+    @Test
+    void searchVectorIsGeneratedByTheDatabase() {
+        insertProduct(anyStoreId(), "Lámparas de cerámica", "lamparas-de-ceramica", 50000);
+
+        // Lowercased, without accents, reduced to the stem, and tagged with weight A (name).
+        String searchVector =
+                jdbc.sql(
+                                "SELECT search_vector::text FROM product"
+                                        + " WHERE slug = 'lamparas-de-ceramica'")
+                        .query(String.class)
+                        .single();
+
+        assertThat(searchVector).contains("'lamp':1A").contains("'ceram':3A");
+    }
+
     // Exercise S1 (docs/exercises/s1.md): add the migration that makes this test pass,
     // then remove @Disabled.
     @Disabled("Exercise S1: needs a CHECK constraint that rejects blank product names")
@@ -77,6 +121,11 @@ class SchemaIntegrationTest {
         assertThatThrownBy(() -> insertProduct(anyStoreId(), "   ", "nombre-en-blanco", 1000))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("ck_product_name_not_blank");
+    }
+
+    private int count(String table) {
+        // Only called with table names written in this class, never with user input.
+        return jdbc.sql("SELECT count(*) FROM " + table).query(Integer.class).single();
     }
 
     private long anyStoreId() {

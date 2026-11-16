@@ -122,6 +122,7 @@ erDiagram
     CATEGORY {
         bigint id PK
         text name
+        text slug UK
     }
     PRODUCT {
         bigint id PK
@@ -130,6 +131,8 @@ erDiagram
         text name
         text slug
         numeric price
+        text image_url
+        timestamptz created_at
         tsvector search_vector
     }
     INVENTORY {
