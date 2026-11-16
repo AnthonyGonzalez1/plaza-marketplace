@@ -29,5 +29,17 @@ jobs:
       - name: Build, test and check formatting
         run: ./mvnw -B verify
 
-      - name: Build Docker image
-        run: docker build -t store-api:ci .
+  # Checks that the Helm chart is valid and renders with the local values. The chart is
+  # installed in a real cluster by deploy/kind/up.sh (and in CI from S8).
+  helm-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+
+      - name: Lint chart
+        run: helm lint deploy/helm/plaza --values deploy/helm/plaza/values-local.yaml --strict
+
+      - name: Render chart
+        run: helm template plaza deploy/helm/plaza --values deploy/helm/plaza/values-local.yaml > /dev/null
