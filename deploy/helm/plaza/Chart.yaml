@@ -1,0 +1,8 @@
+apiVersion: v2
+name: plaza
+description: Plaza Marketplace - store-api, web app and PostgreSQL
+type: application
+# Version of the chart itself (the packaging). Bump it when templates or values change.
+version: 0.1.0
+# Version of the application the chart deploys.
+appVersion: "0.1.0"

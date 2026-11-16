@@ -1,0 +1,53 @@
+{{- $selector := dict "root" . "component" "web" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-web
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "plaza.selectorLabels" $selector | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      {{- include "plaza.selectorLabels" $selector | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "plaza.selectorLabels" $selector | nindent 8 }}
+    spec:
+      containers:
+        - name: web
+          image: "{{ .Values.web.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # The Ingress already sends /api straight to store-api, so this proxy is only a
+            # fallback (for example with "kubectl port-forward" to the web pod). nginx
+            # resolves names without the DNS search list of the pod, so it needs the full
+            # service name.
+            - name: API_UPSTREAM
+              value: http://{{ .Release.Name }}-store-api.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:8080
+          # Exercise S3 (docs/exercises/s3.md): add readinessProbe and livenessProbe here.
+          {{- with .Values.web.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
