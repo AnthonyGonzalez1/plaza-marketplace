@@ -31,6 +31,24 @@ flowchart LR
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Run locally
+
+Requires only Docker (Docker Desktop on Windows and macOS):
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+- Products: <http://localhost:8080/api/v1/products>
+- API docs (Swagger UI): <http://localhost:8080/swagger-ui.html>
+- Health: <http://localhost:8080/actuator/health>
+
+The database starts with demo data. Ports and credentials can be changed by copying
+`.env.example` to `.env`. On Windows, Docker runs inside WSL 2; if it takes too much memory,
+limit it with a `%UserProfile%\.wslconfig` file containing `[wsl2]` and `memory=6GB`.
+
 ## Tech stack
 
 Java 25 · Spring Boot 4.1 · NestJS 12 · React 19 · TypeScript · PostgreSQL 18 · Redis 8 ·
