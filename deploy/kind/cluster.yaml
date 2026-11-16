@@ -1,0 +1,14 @@
+# Local Kubernetes cluster for Plaza: one node running inside a Docker container.
+# Create it with deploy/kind/up.sh (or: kind create cluster --config deploy/kind/cluster.yaml).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: plaza
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # The "node" is a container, so its ports are not reachable from the laptop by default.
+      # This publishes the node port where Traefik listens (30080) as port 80 of the laptop,
+      # which makes http://plaza.localhost reach the ingress controller.
+      - containerPort: 30080
+        hostPort: 80
+        listenAddress: "127.0.0.1"

@@ -1,0 +1,12 @@
+# Values for the Traefik Helm chart in the local kind cluster.
+# k3s (production) ships Traefik already installed, so this file is only needed locally.
+service:
+  # No cloud load balancer exists in kind: expose Traefik on a fixed port of the node instead.
+  type: NodePort
+ports:
+  web:
+    nodePort: 30080
+  websecure:
+    # HTTPS arrives in production (S4) with cert-manager; locally plain HTTP is enough.
+    expose:
+      default: false
