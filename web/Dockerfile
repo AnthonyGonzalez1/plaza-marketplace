@@ -16,7 +16,7 @@ COPY . .
 RUN pnpm build
 
 # ---- Stage 2: serve them with nginx running as a non-root user ----------------------------
-FROM nginxinc/nginx-unprivileged:1.30.6-alpine
+FROM nginxinc/nginx-unprivileged:1.31.7-alpine
 
 # Install the security fixes published after the base image was built (the image scan in CI
 # fails on fixable critical vulnerabilities). Needs root for a moment, then goes back to the
