@@ -11,7 +11,7 @@ CLUSTER=plaza
 NAMESPACE=plaza
 TRAEFIK_CHART_VERSION=42.4.0
 
-if ! kind get clusters | grep -qx "$CLUSTER"; then
+if ! kind get clusters 2>/dev/null | grep -qx "$CLUSTER"; then
   kind create cluster --config deploy/kind/cluster.yaml
 fi
 kubectl config use-context "kind-$CLUSTER" >/dev/null

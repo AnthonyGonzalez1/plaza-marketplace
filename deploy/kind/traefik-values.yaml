@@ -2,7 +2,8 @@
 # k3s (production) ships Traefik already installed, so this file is only needed locally.
 service:
   # No cloud load balancer exists in kind: expose Traefik on a fixed port of the node instead.
-  type: NodePort
+  spec:
+    type: NodePort
 ports:
   web:
     nodePort: 30080
