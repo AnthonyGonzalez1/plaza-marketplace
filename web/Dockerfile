@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Stage 1: build the static files with Node + pnpm -------------------------------------
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
 # Same pnpm version as the "packageManager" field in package.json.
