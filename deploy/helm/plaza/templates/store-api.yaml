@@ -37,6 +37,12 @@ spec:
     spec:
       # Matches the 20 s graceful shutdown of the application, plus a margin.
       terminationGracePeriodSeconds: 30
+      # By default Kubernetes injects variables describing every Service of the namespace,
+      # named after the Service. The Service "plaza-redis" produces PLAZA_REDIS_PORT with the
+      # value "tcp://10.x.x.x:6379", which collides with the PLAZA_REDIS_PORT setting of the
+      # application (a plain number) and stops it from starting. Services are found through
+      # DNS here, so those variables are switched off.
+      enableServiceLinks: false
       containers:
         - name: store-api
           image: "{{ .Values.storeApi.image }}:{{ .Values.imageTag }}"
