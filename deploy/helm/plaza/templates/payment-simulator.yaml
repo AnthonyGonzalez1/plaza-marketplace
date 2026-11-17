@@ -1,0 +1,71 @@
+{{- $selector := dict "root" . "component" "payment-simulator" }}
+# Fake payment gateway. It is only reached from inside the cluster (store-api calls it), so it
+# has a Service but no path in the Ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-payment-simulator
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "plaza.selectorLabels" $selector | nindent 4 }}
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-payment-simulator
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  # Payments waiting for their delay live in the memory of this one process.
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "plaza.selectorLabels" $selector | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "plaza.selectorLabels" $selector | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      # See store-api.yaml: avoids injected variables that collide with the application's own.
+      enableServiceLinks: false
+      containers:
+        - name: payment-simulator
+          image: "{{ .Values.payments.simulator.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            # Results go to store-api through its Service, inside the cluster.
+            - name: WEBHOOK_URL
+              value: http://{{ .Release.Name }}-store-api:8080/api/v1/webhooks/payments
+            - name: WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: PAYMENT_WEBHOOK_SECRET
+            - name: PAYMENT_DELAY_MS
+              value: {{ .Values.payments.simulator.delayMs | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.payments.simulator.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false

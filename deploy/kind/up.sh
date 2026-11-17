@@ -25,10 +25,12 @@ helm upgrade --install traefik traefik \
 echo "==> Building images"
 docker build --tag plaza-store-api:local services/store-api
 docker build --tag plaza-web:local web
+docker build --tag plaza-payment-simulator:local services/payment-simulator
 
 # kind nodes cannot see the images of the laptop's Docker: copy them into the node.
 echo "==> Loading images into the cluster"
-kind load docker-image plaza-store-api:local plaza-web:local --name "$CLUSTER"
+kind load docker-image plaza-store-api:local plaza-web:local plaza-payment-simulator:local \
+  --name "$CLUSTER"
 
 echo "==> Installing the Plaza chart"
 helm upgrade --install plaza deploy/helm/plaza \
@@ -38,7 +40,8 @@ helm upgrade --install plaza deploy/helm/plaza \
 
 # Pods only restart when their spec changes. The image tag is always "local", so force a
 # restart to pick up freshly built images.
-kubectl --namespace "$NAMESPACE" rollout restart deployment/plaza-store-api deployment/plaza-web
+kubectl --namespace "$NAMESPACE" rollout restart deployment/plaza-store-api deployment/plaza-web \
+  deployment/plaza-payment-simulator
 kubectl --namespace "$NAMESPACE" rollout status deployment/plaza-store-api --timeout=3m
 kubectl --namespace "$NAMESPACE" rollout status deployment/plaza-web --timeout=2m
 

@@ -65,6 +65,13 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: PLAZA_REDIS_HOST
               value: {{ .Release.Name }}-redis
+            - name: PLAZA_PAYMENT_URL
+              value: http://{{ .Release.Name }}-payment-simulator:3001
+            - name: PLAZA_PAYMENT_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: PAYMENT_WEBHOOK_SECRET
             - name: SPRING_PROFILES_ACTIVE
               value: {{ .Values.storeApi.springProfile | quote }}
             {{- if .Values.storeApi.corsAllowedOrigins }}

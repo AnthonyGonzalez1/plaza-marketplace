@@ -13,5 +13,10 @@ postgres:
   # Throwaway local database: this password protects nothing.
   password: plaza
 
+payments:
+  webhookSecret: local-dev-webhook-secret
+  simulator:
+    image: plaza-payment-simulator
+
 ingress:
   host: plaza.localhost

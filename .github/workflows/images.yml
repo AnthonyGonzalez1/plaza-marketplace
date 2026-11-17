@@ -26,6 +26,8 @@ jobs:
             context: services/store-api
           - name: plaza-web
             context: web
+          - name: plaza-payment-simulator
+            context: services/payment-simulator
     env:
       # Registry paths must be lowercase.
       IMAGE: ghcr.io/anthonygonzalez1/${{ matrix.name }}
