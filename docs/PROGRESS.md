@@ -5,6 +5,63 @@ session can start without re-deriving context.
 
 ---
 
+## Session 7: Events and notifications, MVP feature-complete (2026-11-17)
+
+### Done
+
+- Transactional outbox in `store-api`: `OrderPlaced`, `OrderPaid` and `OrderCancelled` are
+  written to `outbox_event` in the same transaction as the order change (migration V9). A
+  relay publishes pending rows to the `plaza.events` exchange with publisher confirms and
+  `FOR UPDATE SKIP LOCKED`.
+- `services/notification-service` (NestJS 12): consumes order events from RabbitMQ and emails
+  the buyer through Mailpit; idempotent by event id (Redis), retry queue and dead-letter
+  queue.
+- `e2e/`: Playwright tests of the purchase flow in a real browser against the compose stack,
+  and a CI workflow that runs them.
+- RabbitMQ, Mailpit and the notification service added to `compose.yaml`, the Helm chart, CI
+  (workflow, image build and scan) and Dependabot.
+- Write-up: `docs/events.md`.
+- **Bug found by the first real-browser test and fixed:** through the compose web app (nginx
+  on :3000) every POST, PUT and DELETE was rejected with 403 "Invalid CORS request", so nobody
+  could buy. nginx dropped the port from the Host header and the API saw a cross-origin
+  request. Unit tests and curl never sent an `Origin` header, so they could not catch it.
+  nginx now forwards `$http_host`, and `store-api` honours `X-Forwarded-*` from private
+  proxies, which the same check needs behind Traefik with TLS in production.
+- Smaller fixes from the same browser pass: invalid order ids show "not found", no double
+  period in the reservation notice, "back" after checkout skips the emptied checkout page.
+
+### Decisions
+
+- Events carry the order data (email, items, total), so consumers do not call the API back.
+- Delivery is at-least-once end to end; the consumer deduplicates by event id.
+- The consumer uses `amqplib` directly instead of the NestJS microservices transport, so
+  acknowledgements, retries and dead-lettering stay visible in the code.
+- Redis (already in the stack) stores the handled event ids instead of a new database.
+- RabbitMQ runs as a StatefulSet with a volume; Mailpit keeps its inbox in memory.
+- The Mailpit inbox is public in the demo (`/mailpit`); the checkout page tells buyers to use
+  a test address.
+
+### Pending
+
+- Anthony: exercises in `docs/exercises/s7.md` (the `OrderPlaced` email handler is his).
+- **Production deploy of all services and the memory check on the 12 GB VM**: blocked until
+  the Oracle VM exists (`docs/deploy.md`). The roadmap's "done when" for S7 (purchase on the
+  public URL) is not met yet; issue #7 stays open, like #4.
+- `~/plaza-secrets.yaml` on the server now needs three entries (`docs/deploy.md` section 6).
+- `outbox_event` is never purged.
+- Accessibility and UX found in the browser, for S15/S16: focus does not move to the new
+  page heading after navigation, scroll position is kept when opening a product, some states
+  keep the generic tab title, API error details appear in English in the Spanish UI.
+
+### Next step
+
+When the VM exists: deploy with `docs/deploy.md`, fix whatever differs, add the live URL to
+the README and close #4 and #7. In parallel **S8 (issue #8)**: branch `feat/ci-kind-cd`: CI job
+that creates a kind cluster, installs the chart and runs smoke tests; continuous deployment
+to k3s with automatic rollback.
+
+---
+
 ## Session 6: Payment simulator and idempotency (2026-11-17)
 
 ### Done

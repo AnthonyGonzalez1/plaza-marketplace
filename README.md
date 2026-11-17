@@ -4,8 +4,9 @@ Order platform for a marketplace of small merchants: multi-store catalog with fu
 cart, checkout that never oversells the last unit, payments confirmed through signed webhooks,
 and event-driven notifications.
 
-> **Status:** in development. The live demo, screenshots and the one-command local setup will
-> appear here as the [roadmap](docs/ROADMAP.md) progresses.
+> **Status:** the purchase flow is complete and runs locally with one command: browse, add to
+> cart, check out, pay and receive the confirmation email. The public demo link and
+> screenshots will appear here; see the [roadmap](docs/ROADMAP.md) for what comes next.
 
 ## What makes it interesting
 
@@ -45,6 +46,8 @@ Then open:
 - Products API: <http://localhost:8080/api/v1/products>
 - Cart and checkout API: `/api/v1/carts` and `/api/v1/orders` (try them from Swagger UI)
 - Payment simulator (fake gateway): <http://localhost:3001/health>
+- Email inbox (Mailpit, fake mail server): <http://localhost:8025>
+- RabbitMQ management UI: <http://localhost:15672> (user `plaza`, password `plaza`)
 - API docs (Swagger UI): <http://localhost:8080/swagger-ui.html>
 - Health: <http://localhost:8080/actuator/health>
 
@@ -85,6 +88,8 @@ GitHub Actions
 - [Production deploy runbook](docs/deploy.md)
 - [How checkout avoids overselling](docs/sql/checkout-concurrency.md)
 - [Payments: webhooks, signatures and idempotency](docs/payments.md)
+- [Events: transactional outbox, RabbitMQ and notifications](docs/events.md)
+- [End-to-end tests](e2e/README.md)
 - [Progress log](docs/PROGRESS.md)
 
 ## License
