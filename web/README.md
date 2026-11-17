@@ -3,13 +3,13 @@
 React single-page app for the Plaza store: browse, search and filter products, add them to a
 cart and place an order as a guest. It talks to `store-api` over REST (`/api/v1`).
 
-| Route              | Page                                                          |
-| ------------------ | ------------------------------------------------------------- |
-| `/`                | Catalog: search, filters, sort and pagination                 |
-| `/products/:id`    | Product page with the "add to cart" form                      |
-| `/cart`            | Cart: change quantities, remove products, see the total       |
-| `/checkout`        | Order summary and the e-mail of the guest; creates the order  |
-| `/orders/:orderId` | The order and its status (payment arrives in a later version) |
+| Route              | Page                                                         |
+| ------------------ | ------------------------------------------------------------ |
+| `/`                | Catalog: search, filters, sort and pagination                |
+| `/products/:id`    | Product page with the "add to cart" form                     |
+| `/cart`            | Cart: change quantities, remove products, see the total      |
+| `/checkout`        | Order summary and the e-mail of the guest; creates the order |
+| `/orders/:orderId` | The order and its status; pay it with the simulated gateway  |
 
 Stack: React 19, TypeScript, Vite, React Router, TanStack Query, plain CSS. Tests with Vitest and
 React Testing Library.
@@ -94,7 +94,7 @@ src/
     http.ts             fetch wrapper, query-string builder, ApiError (RFC 9457 problem details)
     catalog.ts          types of the REST contract and one function per endpoint
     cart.ts             cart types and endpoints (create, read, set quantity, remove)
-    orders.ts           order types and endpoints (create, read)
+    orders.ts           order types and endpoints (create, read, pay)
   components/           Layout, CatalogFilters, ProductCard, ProductImage, StockBadge,
                         Pagination, StatusMessage, AddToCartForm, EmptyCart, OrderSummary
   pages/                CatalogPage, ProductDetailPage, CartPage, CheckoutPage, OrderPage,
@@ -121,6 +121,14 @@ src/
   the header badge and the pages. No cart is created until the first product is added. Every
   change answers with the whole updated cart, which replaces the cached copy. A cart that
   expired on the server (404) is forgotten and shown as empty.
+- **A retried checkout cannot create two orders.** The checkout page generates one random
+  `Idempotency-Key` per visit and sends it with `POST /orders`. A double click or a retry after
+  a network error repeats the same key, and the API answers with the order it already created.
+- **The payment is asynchronous, so the order page polls.** `POST /orders/{id}/payments` only
+  answers 202 ("sent to the gateway"); the result reaches the backend later through a webhook.
+  After a 202 the page reads the order again every 2 seconds until its status stops being
+  `PENDING_PAYMENT`, and gives up after 30 seconds with a "check again" button. The gateway is
+  simulated: a second button asks it to decline the payment.
 - **Debounced search.** Text fields are applied 400 ms after the last keystroke (or at once with
   Enter), so the API is not called on every letter.
 - **Tests mock `fetch`, nothing else.** They render the real app and routes, so they cover the

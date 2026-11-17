@@ -8,15 +8,16 @@ import type { Page, ProductDetail, ProductSummary } from '../api/catalog';
 import type { Order } from '../api/orders';
 import { App } from '../App';
 
-/** Method and JSON body of a request, for the tests that check what was sent. */
+/** Method, headers and JSON body of a request, for the tests that check what was sent. */
 export interface SentRequest {
   method: string;
+  headers: Record<string, string>;
   body: unknown;
 }
 
 /**
  * Replaces the global `fetch`. The handler receives the requested URL (and, as a second
- * argument, the method and body) and returns either the JSON body of a 200 response or a
+ * argument, the method, headers and body) and returns either the JSON body of a 200 response or a
  * full Response (see `problemResponse`).
  * Returns the list of requested URLs so tests can assert on what was asked.
  */
@@ -29,7 +30,9 @@ export function mockFetch(handler: (url: URL, request: SentRequest) => unknown):
       requests.push(url);
       const method = init?.method ?? 'GET';
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined;
-      const result = handler(url, { method, body });
+      // The app always passes the headers as a plain object, never as a Headers instance.
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      const result = handler(url, { method, headers, body });
       return result instanceof Response ? result : Response.json(result);
     }),
   );
@@ -43,6 +46,11 @@ export function problemResponse(status: number, detail: string): Response {
     status,
     headers: { 'Content-Type': 'application/problem+json' },
   });
+}
+
+/** 202 Accepted with no body: what the API answers when a payment was sent to the gateway. */
+export function acceptedResponse(): Response {
+  return new Response(null, { status: 202 });
 }
 
 export function makeProduct(overrides: Partial<ProductDetail> = {}): ProductDetail {
