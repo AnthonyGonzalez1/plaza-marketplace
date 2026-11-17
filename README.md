@@ -43,6 +43,7 @@ Then open:
 
 - Web app: <http://localhost:3000>
 - Products API: <http://localhost:8080/api/v1/products>
+- Cart and checkout API: `/api/v1/carts` and `/api/v1/orders` (try them from Swagger UI)
 - API docs (Swagger UI): <http://localhost:8080/swagger-ui.html>
 - Health: <http://localhost:8080/actuator/health>
 
@@ -81,6 +82,7 @@ GitHub Actions
 - [Architecture](docs/ARCHITECTURE.md)
 - [Architecture decision records](docs/adr/)
 - [Production deploy runbook](docs/deploy.md)
+- [How checkout avoids overselling](docs/sql/checkout-concurrency.md)
 - [Progress log](docs/PROGRESS.md)
 
 ## License

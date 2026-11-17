@@ -5,6 +5,50 @@ session can start without re-deriving context.
 
 ---
 
+## Session 5: Cart and checkout without overselling (2026-11-16)
+
+### Done
+
+- Cart in Redis (`/api/v1/carts`): one hash per cart, 7-day sliding expiry, prices always read
+  from the catalog.
+- Migration V7: `orders` (UUID v7 id, status with `CHECK`, `expires_at`) and `order_item`
+  (snapshot of product name and unit price).
+- `POST /api/v1/orders`: in one transaction, a conditional `UPDATE` reserves the stock of each
+  product (sorted by id) and the order is created in `PENDING_PAYMENT`; `409` when stock is
+  missing, and nothing stays reserved. `GET /api/v1/orders/{id}`.
+- Concurrency test: 50 simultaneous checkouts for 10 units create exactly 10 orders. Checked
+  that it fails (50 orders) when the reservation is rewritten as read-then-write.
+- Web: add to cart, cart page, guest checkout with email and order page.
+- Redis added to `compose.yaml` and to the Helm chart (Deployment without a volume).
+- `Inventory` moved to its own `inventory` package; `catalog.ProductLookup` is what cart and
+  ordering use to read products.
+- Write-up: `docs/sql/checkout-concurrency.md`.
+
+### Decisions
+
+- Conditional `UPDATE` instead of `SELECT ... FOR UPDATE` or a version column: contention is
+  the normal case in a flash sale and the rule fits in a `WHERE`.
+- The cart reserves nothing; only checkout takes stock.
+- Order ids are UUID v7: guests have no account, so the id must not be guessable.
+- Checkout commits the order first and deletes the cart afterwards (two systems, no shared
+  transaction).
+- Redis is not part of the readiness probe: the catalog keeps working if Redis is down.
+
+### Pending
+
+- Anthony: exercises in `docs/exercises/s5.md`.
+- Unpaid orders keep their stock reserved until S6 (expiry job). No `Idempotency-Key` yet.
+- Validation errors answer a generic "Invalid request content." without naming the field.
+
+### Next step
+
+Start **S6 (issue #6)**: branch `feat/payment-simulator`, NestJS `services/payment-simulator`
+(`POST /payments` answers 202 and later calls a signed webhook), webhook endpoint in
+`store-api` with the `processed_webhook` table, order state machine, `Idempotency-Key` and
+the job that cancels expired orders.
+
+---
+
 ## Session 4 (part 1): production deploy prepared (2026-11-16)
 
 The repository side of S4 is done. The server does not exist yet, so nothing here has run on a
