@@ -5,6 +5,55 @@ session can start without re-deriving context.
 
 ---
 
+## Session 6: Payment simulator and idempotency (2026-11-17)
+
+### Done
+
+- `services/payment-simulator` (NestJS 12): `POST /payments` answers 202 and, after a delay,
+  calls the store webhook with `APPROVED` or `DECLINED`, signed with HMAC-SHA256; retries with
+  backoff; optional duplicate deliveries. 21 Jest tests.
+- `store-api`: `POST /api/v1/orders/{id}/payments` (202), webhook endpoint with signature
+  check and deduplication (`processed_webhook`), order state machine
+  (`PENDING_PAYMENT -> PAID | CANCELLED`), `Idempotency-Key` on checkout (unique constraint),
+  job that cancels unpaid orders and returns their stock in one statement. Migration V8.
+- Web: pay and "simulate declined" buttons on the order page, polling until the order leaves
+  the pending state, idempotency key on checkout.
+- Simulator added to `compose.yaml`, the Helm chart, CI (new workflow, image build and scan)
+  and Dependabot.
+- Tests: 124 backend (2 skipped on purpose), 71 web, 21 simulator.
+- Checked on compose and on kind with the real simulator: approved, declined, duplicate
+  webhook ignored, unsigned webhook rejected, expired order cancelled with its stock returned.
+- Write-up: `docs/payments.md`.
+
+### Decisions
+
+- The webhook signature covers the body only; replays are harmless because events are
+  deduplicated by id.
+- The idempotency key is a column of `orders` with a `UNIQUE` constraint instead of a
+  separate table: the constraint is what stops two simultaneous requests.
+- Cancelling and restocking is one SQL statement with CTEs, shared by the declined webhook and
+  the expiry job.
+- Tests replace the gateway with a fake and switch scheduling off; jobs are called directly.
+- The simulator lets the caller choose the outcome, so both paths can be shown in a demo.
+
+### Pending
+
+- Anthony: exercises in `docs/exercises/s6.md`.
+- Not verified: the new pages in a real browser, and the simulator image for arm64 (first
+  multi-architecture build happens when this is merged).
+- Production: `~/plaza-secrets.yaml` on the server needs `payments.webhookSecret`
+  (`docs/deploy.md` section 6).
+- Late approvals (after cancellation) are only logged; no refund flow.
+
+### Next step
+
+Start **S7 (issue #7)**: branch `feat/events-notifications`: outbox table written in the same
+transaction as order changes, relay to RabbitMQ, NestJS `services/notification-service`
+consuming `OrderPaid` / `OrderCancelled` and sending email to Mailpit, Playwright e2e test of
+the purchase flow.
+
+---
+
 ## Session 5: Cart and checkout without overselling (2026-11-16)
 
 ### Done

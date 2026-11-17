@@ -144,12 +144,13 @@ kubectl get clusterissuer         # both READY True after a few seconds
 
 ## 6. First deploy (SSH)
 
-1. Create the database password **on the server**. It is never typed in a chat, committed, or
-   left in the shell history:
+1. Create the secrets **on the server**: the database password and the secret that signs
+   payment webhooks. They are never typed in a chat, committed, or left in the shell history:
 
    ```bash
    umask 077
-   printf 'postgres:\n  password: "%s"\n' "$(openssl rand -hex 24)" > ~/plaza-secrets.yaml
+   printf 'postgres:\n  password: "%s"\npayments:\n  webhookSecret: "%s"\n' \
+     "$(openssl rand -hex 24)" "$(openssl rand -hex 32)" > ~/plaza-secrets.yaml
    ```
 
    PostgreSQL reads this password only when it initializes an empty volume. Changing the file
