@@ -5,6 +5,7 @@ import { MemoryRouter, useLocation } from 'react-router';
 import { vi } from 'vitest';
 import type { Cart, CartItem } from '../api/cart';
 import type { Page, ProductDetail, ProductSummary } from '../api/catalog';
+import type { Order } from '../api/orders';
 import { App } from '../App';
 
 /** Method and JSON body of a request, for the tests that check what was sent. */
@@ -91,6 +92,28 @@ export function makeCart(items: CartItem[] = [], id = 'cart-1'): Cart {
     totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
     total: items.reduce((sum, item) => sum + item.lineTotal, 0),
     currency: 'COP',
+  };
+}
+
+export function makeOrder(overrides: Partial<Order> = {}): Order {
+  return {
+    id: 'order-1',
+    status: 'PENDING_PAYMENT',
+    email: 'ana@correo.co',
+    total: 64000,
+    currency: 'COP',
+    createdAt: '2026-11-16T20:00:00Z',
+    expiresAt: '2026-11-16T20:15:00Z',
+    items: [
+      {
+        productId: 1,
+        name: 'Café de origen Huila',
+        unitPrice: 32000,
+        quantity: 2,
+        lineTotal: 64000,
+      },
+    ],
+    ...overrides,
   };
 }
 
