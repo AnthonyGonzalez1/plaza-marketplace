@@ -52,6 +52,7 @@ class CheckoutConcurrencyIntegrationTest {
 
     @AfterEach
     void restoreDatabase() {
+        jdbc.sql("DELETE FROM processed_webhook").update();
         jdbc.sql("DELETE FROM order_item").update();
         jdbc.sql("DELETE FROM orders").update();
         setStock(originalStock);
@@ -77,7 +78,7 @@ class CheckoutConcurrencyIntegrationTest {
                     () -> {
                         start.await();
                         try {
-                            checkoutService.checkout(cartId, "buyer@example.com");
+                            checkoutService.checkout(cartId, "buyer@example.com", null);
                             return true;
                         } catch (ConflictException outOfStock) {
                             return false;

@@ -16,7 +16,16 @@ import com.plaza.store.TestcontainersConfiguration;
 import com.plaza.store.cart.CartService;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +51,7 @@ class OrderApiIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private JdbcClient jdbc;
     @Autowired private CartService cartService;
+    @Autowired private CheckoutService checkoutService;
 
     // Seed data: coffee costs 32000 with 20 in stock; the basket costs 230000 with 1 in stock.
     private long coffee;
@@ -55,6 +65,7 @@ class OrderApiIntegrationTest {
 
     @AfterEach
     void restoreDatabase() {
+        jdbc.sql("DELETE FROM processed_webhook").update();
         jdbc.sql("DELETE FROM order_item").update();
         jdbc.sql("DELETE FROM orders").update();
         setStock(coffee, 20);
@@ -205,6 +216,78 @@ class OrderApiIntegrationTest {
                                 .update())
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("ck_orders_status");
+    }
+
+    @Test
+    void sameIdempotencyKeyReturnsTheSameOrderAndReservesOnce() throws Exception {
+        UUID cartId = cartWith(coffee, 2);
+        String key = UUID.randomUUID().toString();
+
+        String first =
+                checkoutWithKey(cartId, key)
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        // The retry: the browser never saw the first answer and sends the request again.
+        String second =
+                checkoutWithKey(cartId, key)
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+
+        assertThat((String) JsonPath.read(second, "$.id")).isEqualTo(JsonPath.read(first, "$.id"));
+        assertThat(count("orders")).isEqualTo(1);
+        assertThat(stockOf(coffee)).isEqualTo(18);
+    }
+
+    @Test
+    void sameKeyInParallelCreatesOneOrder() throws Exception {
+        // A double click: several identical requests at the same instant. Only the UNIQUE
+        // constraint can stop this; a "does the key exist?" check passes for all of them.
+        UUID cartId = cartWith(coffee, 2);
+        String key = UUID.randomUUID().toString();
+        int requests = 8;
+
+        ExecutorService pool = Executors.newFixedThreadPool(requests);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<UUID>> results = new ArrayList<>();
+        for (int i = 0; i < requests; i++) {
+            results.add(
+                    pool.submit(() -> {
+                        start.await();
+                        return checkoutService.checkout(cartId, "ana@example.com", key).id();
+                    }));
+        }
+        start.countDown();
+
+        Set<UUID> orderIds = new HashSet<>();
+        for (Future<UUID> result : results) {
+            orderIds.add(result.get(60, TimeUnit.SECONDS));
+        }
+        pool.shutdown();
+
+        assertThat(orderIds).as("every request got the same order").hasSize(1);
+        assertThat(count("orders")).isEqualTo(1);
+        assertThat(stockOf(coffee)).isEqualTo(18);
+    }
+
+    @Test
+    void idempotencyKeyThatIsTooLongReturns400() throws Exception {
+        checkoutWithKey(cartWith(coffee, 1), "x".repeat(101)).andExpect(status().isBadRequest());
+
+        assertThat(stockOf(coffee)).isEqualTo(20);
+    }
+
+    private ResultActions checkoutWithKey(UUID cartId, String key) throws Exception {
+        return mockMvc.perform(
+                post("/api/v1/orders")
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"cartId\": \"%s\", \"email\": \"ana@example.com\"}"
+                                        .formatted(cartId)));
     }
 
     private ResultActions checkout(UUID cartId, String email) throws Exception {

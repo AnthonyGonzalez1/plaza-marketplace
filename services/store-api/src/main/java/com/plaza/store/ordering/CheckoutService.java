@@ -3,7 +3,9 @@ package com.plaza.store.ordering;
 import com.plaza.store.cart.CartService;
 import com.plaza.store.shared.InvalidRequestException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -24,12 +26,35 @@ public class CheckoutService {
         this.orderService = orderService;
     }
 
-    public OrderResponse checkout(UUID cartId, String email) {
+    /**
+     * @param idempotencyKey identifies this checkout attempt (header {@code Idempotency-Key}), or
+     *     null. A browser cannot know whether a request that timed out was processed, so it sends
+     *     it again with the same key; the answer is then the order created the first time.
+     */
+    public OrderResponse checkout(UUID cartId, String email, String idempotencyKey) {
+        if (idempotencyKey != null) {
+            // A retry of a checkout that already succeeded. This check goes before the cart
+            // check: the first attempt deleted the cart.
+            Optional<OrderResponse> existing = orderService.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+
         Map<Long, Integer> quantities = cartService.findItems(cartId);
         if (quantities.isEmpty()) {
             throw new InvalidRequestException("Cart " + cartId + " is empty or does not exist");
         }
-        OrderResponse order = orderService.placeOrder(email, quantities);
+
+        OrderResponse order;
+        try {
+            order = orderService.placeOrder(email, quantities, idempotencyKey);
+        } catch (DuplicateKeyException sameKeyAtTheSameTime) {
+            // Two requests with the same key ran in parallel and both passed the check above.
+            // The UNIQUE constraint let only one insert its order; the transaction of this one
+            // was rolled back, stock included. Answer with the order of the winner.
+            return orderService.findByIdempotencyKey(idempotencyKey).orElseThrow();
+        }
         cartService.deleteCart(cartId);
         return order;
     }
