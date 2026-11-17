@@ -1,7 +1,15 @@
 # Plaza web
 
-React single-page app for the Plaza catalog: browse, search and filter products, and open a
-product page. It talks to `store-api` over REST (`/api/v1`).
+React single-page app for the Plaza store: browse, search and filter products, add them to a
+cart and place an order as a guest. It talks to `store-api` over REST (`/api/v1`).
+
+| Route              | Page                                                          |
+| ------------------ | ------------------------------------------------------------- |
+| `/`                | Catalog: search, filters, sort and pagination                 |
+| `/products/:id`    | Product page with the "add to cart" form                      |
+| `/cart`            | Cart: change quantities, remove products, see the total       |
+| `/checkout`        | Order summary and the e-mail of the guest; creates the order  |
+| `/orders/:orderId` | The order and its status (payment arrives in a later version) |
 
 Stack: React 19, TypeScript, Vite, React Router, TanStack Query, plain CSS. Tests with Vitest and
 React Testing Library.
@@ -85,12 +93,17 @@ src/
   api/
     http.ts             fetch wrapper, query-string builder, ApiError (RFC 9457 problem details)
     catalog.ts          types of the REST contract and one function per endpoint
+    cart.ts             cart types and endpoints (create, read, set quantity, remove)
+    orders.ts           order types and endpoints (create, read)
   components/           Layout, CatalogFilters, ProductCard, ProductImage, StockBadge,
-                        Pagination, StatusMessage
-  pages/                CatalogPage, ProductDetailPage, NotFoundPage (+ their tests)
+                        Pagination, StatusMessage, AddToCartForm, EmptyCart, OrderSummary
+  pages/                CatalogPage, ProductDetailPage, CartPage, CheckoutPage, OrderPage,
+                        NotFoundPage (+ their tests)
   lib/
     catalogParams.ts    reads/writes the catalog state from/to the URL query string
-    format.ts           price formatting (COP)
+    cartStorage.ts      keeps the cart ID in localStorage and tells React when it changes
+    useCart.ts          hooks to read the cart and to change it (TanStack Query)
+    format.ts           price (COP) and date formatting
     errorMessage.ts     text to show for a failed request
   i18n/es.ts            every user-facing string (Spanish)
   test/                 test setup and helpers (fake fetch, sample data, renderApp)
@@ -103,6 +116,11 @@ src/
   state to keep in sync. Changing a filter resets the page to the first one.
 - **TanStack Query for server data.** It gives caching, loading/error states and request
   cancellation; the URL parameters are the cache key. There is no global client-side store.
+- **The cart lives on the server; the browser only keeps its ID.** The ID is stored in
+  `localStorage` (`plaza.cartId`) and the content is the query `['cart', cartId]`, shared by
+  the header badge and the pages. No cart is created until the first product is added. Every
+  change answers with the whole updated cart, which replaces the cached copy. A cart that
+  expired on the server (404) is forgotten and shown as empty.
 - **Debounced search.** Text fields are applied 400 ms after the last keystroke (or at once with
   Enter), so the API is not called on every letter.
 - **Tests mock `fetch`, nothing else.** They render the real app and routes, so they cover the
