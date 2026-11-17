@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Function;
@@ -47,9 +48,11 @@ public class OrderService {
      * an order without its stock, nor stock taken without an order.
      *
      * @param quantities product id -> units to buy
+     * @param idempotencyKey key of this checkout attempt, or null if the client sent none
      */
     @Transactional
-    public OrderResponse placeOrder(String email, Map<Long, Integer> quantities) {
+    public OrderResponse placeOrder(
+            String email, Map<Long, Integer> quantities, String idempotencyKey) {
         Map<Long, ProductSnapshot> products =
                 productLookup.findByIds(quantities.keySet()).stream()
                         .collect(Collectors.toMap(ProductSnapshot::id, Function.identity()));
@@ -76,7 +79,7 @@ public class OrderService {
         }
 
         OffsetDateTime expiresAt = OffsetDateTime.now(ZoneOffset.UTC).plus(paymentWindow);
-        UUID orderId = orderRepository.insertOrder(email, total, expiresAt);
+        UUID orderId = orderRepository.insertOrder(email, total, expiresAt, idempotencyKey);
         for (Map.Entry<Long, Integer> entry : sortedQuantities.entrySet()) {
             ProductSnapshot product = products.get(entry.getKey());
             // Name and price are copied into the order: later catalog changes must not alter it.
@@ -84,6 +87,31 @@ public class OrderService {
                     orderId, product.id(), product.name(), product.price(), entry.getValue());
         }
         return orderRepository.findById(orderId).orElseThrow();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<OrderResponse> findByIdempotencyKey(String idempotencyKey) {
+        return orderRepository
+                .findIdByIdempotencyKey(idempotencyKey)
+                .flatMap(orderRepository::findById);
+    }
+
+    /** The payment was approved. Returns false if the order was not awaiting payment any more. */
+    @Transactional
+    public boolean markPaid(UUID orderId) {
+        return orderRepository.markPaid(orderId);
+    }
+
+    /** The payment was declined: cancel the order and give its units back to the stock. */
+    @Transactional
+    public boolean cancel(UUID orderId) {
+        return orderRepository.cancelAndRestock(orderId);
+    }
+
+    /** Cancels the orders that were not paid in time. Returns how many. */
+    @Transactional
+    public int cancelExpiredOrders() {
+        return orderRepository.cancelExpiredAndRestock();
     }
 
     @Transactional(readOnly = true)
