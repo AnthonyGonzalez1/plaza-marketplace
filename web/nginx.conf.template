@@ -24,19 +24,25 @@ server {
     set $api_upstream ${API_UPSTREAM};
 
     # REST API and its OpenAPI docs: forwarded to store-api with the original path.
+    #
+    # Host is forwarded as $http_host (exactly what the browser sent, port included, e.g.
+    # "localhost:3000"), not $host (which drops the port). Browsers add an Origin header to every
+    # POST, PUT and DELETE, and the API compares it with the host it sees to decide whether the
+    # request is cross-origin. With the port dropped, "http://localhost:3000" looked like another
+    # site and every write from the web app was rejected with 403 "Invalid CORS request".
+    # No X-Forwarded-Proto header: this nginx is only reached over plain HTTP, and when the API
+    # sees that header it resets the port to the default one (80), losing the port again.
     location /api/ {
         proxy_pass $api_upstream;
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location ~ ^/(swagger-ui|v3/api-docs) {
         proxy_pass $api_upstream;
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # Vite puts a content hash in every file name under /assets, so a file never changes:
