@@ -919,10 +919,47 @@ select {
   overflow-wrap: anywhere;
 }
 
-.order__notice {
+/* The box with the pay buttons, and the message that replaces it once the order is final. */
+.payment,
+.order__result {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
   padding: var(--space-4);
   border-radius: var(--radius-large);
   background: var(--color-accent-soft);
+}
+
+.payment h2,
+.order__result-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.payment__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.payment__note {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.payment__status {
+  font-weight: 600;
+}
+
+/* Empty until a payment is sent: take no space meanwhile. */
+.payment__status:empty {
+  display: none;
+}
+
+/* A cancelled order is not a success: use the neutral surface instead of the accent one. */
+.order__result--cancelled {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
 }
 
 @media (min-width: 30rem) {

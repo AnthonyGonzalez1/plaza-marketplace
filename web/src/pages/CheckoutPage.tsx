@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ApiError } from '../api/http';
-import { createOrder } from '../api/orders';
+import { createOrder, type NewOrder } from '../api/orders';
 import { EmptyCart } from '../components/EmptyCart';
 import { OrderSummary } from '../components/OrderSummary';
 import { StatusMessage } from '../components/StatusMessage';
@@ -34,8 +34,14 @@ export function CheckoutPage() {
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
 
+  // One key per visit to this page. The function passed to useState runs only on the first
+  // render, so every submit from this visit (double click, retry after a network error)
+  // sends the SAME key and the server creates one order at most. Opening the checkout page
+  // again builds the component from scratch and gets a new key.
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+
   const placeOrder = useMutation({
-    mutationFn: createOrder,
+    mutationFn: (newOrder: NewOrder) => createOrder(newOrder, idempotencyKey),
     onSuccess: (order) => {
       // The order page can show this order right away, without asking the API for it.
       queryClient.setQueryData(['order', order.id], order);

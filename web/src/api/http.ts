@@ -59,14 +59,16 @@ export async function getJson<T>(
 
 /**
  * Sends a request that changes something on the server (POST, PUT, DELETE) and returns the
- * JSON answer. When a body is given it is sent as JSON.
+ * JSON answer. When a body is given it is sent as JSON. `extraHeaders` adds headers that only
+ * some endpoints need (e.g. `Idempotency-Key`).
  */
 export async function sendJson<T>(
   method: 'POST' | 'PUT' | 'DELETE',
   path: string,
   body?: unknown,
+  extraHeaders: Record<string, string> = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', ...extraHeaders };
   if (body !== undefined) {
     // Tells the server how to read the body. Without it the API answers 415.
     headers['Content-Type'] = 'application/json';
@@ -81,7 +83,10 @@ export async function sendJson<T>(
   if (!response.ok) {
     throw new ApiError(response.status, await readProblem(response));
   }
-  return (await response.json()) as T;
+  // Some answers have no body (e.g. 202 Accepted). `response.json()` would fail on them, so
+  // read the text first and only parse it when there is something to parse.
+  const text = await response.text();
+  return (text === '' ? undefined : JSON.parse(text)) as T;
 }
 
 /** Reads the problem body, or returns null when the error is not JSON (e.g. a proxy 502 page). */
