@@ -88,3 +88,13 @@ linked from the failed test. To record a trace locally: `pnpm test --trace on`.
   touches that product.
 - The texts the tests look for ("Pagar ahora", "Pago aprobado"...) are the real Spanish texts
   of the app, from `web/src/i18n/es.ts`. If a text changes there, change it here too.
+
+## Running against the local Kubernetes cluster
+
+The browser resolves `plaza.localhost` by itself, but Node.js (which makes the API and Mailpit
+calls of the tests) does not resolve `*.localhost` names. Against kind, run only the browser
+tests and check the emails in <http://plaza.localhost/mailpit>:
+
+```bash
+E2E_BASE_URL=http://plaza.localhost pnpm test tests/purchase.spec.ts tests/checkout-validation.spec.ts
+```

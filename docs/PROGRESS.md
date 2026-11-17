@@ -27,6 +27,12 @@ session can start without re-deriving context.
   request. Unit tests and curl never sent an `Origin` header, so they could not catch it.
   nginx now forwards `$http_host`, and `store-api` honours `X-Forwarded-*` from private
   proxies, which the same check needs behind Traefik with TLS in production.
+- Verified with everything running: e2e suite green three times in a row on compose with the
+  email checks on; with RabbitMQ stopped, an order was placed and paid, its two events waited
+  in the outbox and were published (and the email sent) as soon as the broker came back; on
+  kind, the browser e2e tests pass through the Ingress and the emails reach the cluster inbox
+  at `/mailpit`. The whole kind node (Kubernetes, Traefik, cert-manager and the 8 services)
+  uses about 2.2 GB of memory, well within the 12 GB VM.
 - Smaller fixes from the same browser pass: invalid order ids show "not found", no double
   period in the reservation notice, "back" after checkout skips the emptied checkout page.
 
