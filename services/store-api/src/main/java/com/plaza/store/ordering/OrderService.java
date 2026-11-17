@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -26,16 +27,19 @@ public class OrderService {
     private final ProductLookup productLookup;
     private final StockRepository stockRepository;
     private final OrderRepository orderRepository;
+    private final OrderEvents orderEvents;
     private final Duration paymentWindow;
 
     public OrderService(
             ProductLookup productLookup,
             StockRepository stockRepository,
             OrderRepository orderRepository,
+            OrderEvents orderEvents,
             @Value("${plaza.orders.payment-window}") Duration paymentWindow) {
         this.productLookup = productLookup;
         this.stockRepository = stockRepository;
         this.orderRepository = orderRepository;
+        this.orderEvents = orderEvents;
         this.paymentWindow = paymentWindow;
     }
 
@@ -86,7 +90,10 @@ public class OrderService {
             orderRepository.insertItem(
                     orderId, product.id(), product.name(), product.price(), entry.getValue());
         }
-        return orderRepository.findById(orderId).orElseThrow();
+        OrderResponse order = orderRepository.findById(orderId).orElseThrow();
+        // Same transaction as the order: if anything above failed, no event is left behind.
+        orderEvents.orderPlaced(order);
+        return order;
     }
 
     @Transactional(readOnly = true)
@@ -96,22 +103,43 @@ public class OrderService {
                 .flatMap(orderRepository::findById);
     }
 
-    /** The payment was approved. Returns false if the order was not awaiting payment any more. */
+    /**
+     * The payment was approved. Returns false if the order was not awaiting payment any more.
+     *
+     * <p>The status change and the OrderPaid event are written in this one transaction (the outbox
+     * pattern): there is never a paid order without its event, nor an event for a change that was
+     * rolled back.
+     */
     @Transactional
     public boolean markPaid(UUID orderId) {
-        return orderRepository.markPaid(orderId);
+        if (!orderRepository.markPaid(orderId)) {
+            return false;
+        }
+        orderEvents.orderPaid(orderRepository.findById(orderId).orElseThrow());
+        return true;
     }
 
     /** The payment was declined: cancel the order and give its units back to the stock. */
     @Transactional
     public boolean cancel(UUID orderId) {
-        return orderRepository.cancelAndRestock(orderId);
+        if (!orderRepository.cancelAndRestock(orderId)) {
+            return false;
+        }
+        orderEvents.orderCancelled(
+                orderRepository.findById(orderId).orElseThrow(),
+                OrderEvents.REASON_PAYMENT_DECLINED);
+        return true;
     }
 
     /** Cancels the orders that were not paid in time. Returns how many. */
     @Transactional
     public int cancelExpiredOrders() {
-        return orderRepository.cancelExpiredAndRestock();
+        List<UUID> cancelled = orderRepository.cancelExpiredAndRestock();
+        for (UUID orderId : cancelled) {
+            orderEvents.orderCancelled(
+                    orderRepository.findById(orderId).orElseThrow(), OrderEvents.REASON_EXPIRED);
+        }
+        return cancelled.size();
     }
 
     @Transactional(readOnly = true)

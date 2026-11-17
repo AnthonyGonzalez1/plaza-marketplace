@@ -45,7 +45,7 @@ public class OrderRepository {
                 FROM returned r
                 WHERE i.product_id = r.product_id
             )
-            SELECT count(*) FROM cancelled
+            SELECT id FROM cancelled
             """;
 
     private final JdbcClient jdbc;
@@ -121,22 +121,22 @@ public class OrderRepository {
      * @return true if the order was cancelled, false if it was not pending any more
      */
     public boolean cancelAndRestock(UUID orderId) {
-        return jdbc.sql(CANCEL_AND_RESTOCK.formatted("id = :orderId"))
-                        .param("orderId", orderId)
-                        .query(Integer.class)
-                        .single()
-                == 1;
+        return !jdbc.sql(CANCEL_AND_RESTOCK.formatted("id = :orderId"))
+                .param("orderId", orderId)
+                .query(UUID.class)
+                .list()
+                .isEmpty();
     }
 
     /**
      * Cancels every pending order whose payment window is over and returns their units.
      *
-     * @return how many orders were cancelled
+     * @return the ids of the orders that were cancelled
      */
-    public int cancelExpiredAndRestock() {
+    public List<UUID> cancelExpiredAndRestock() {
         return jdbc.sql(CANCEL_AND_RESTOCK.formatted("expires_at < now()"))
-                .query(Integer.class)
-                .single();
+                .query(UUID.class)
+                .list();
     }
 
     public Optional<OrderResponse> findById(UUID orderId) {
