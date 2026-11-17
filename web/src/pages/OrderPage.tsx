@@ -88,7 +88,12 @@ export function OrderPage() {
     </Link>
   );
 
-  if (order.error instanceof ApiError && order.error.status === 404) {
+  // 404: no order with this id. 400: the id in the URL is not even a valid order id (a UUID),
+  // so no such order can exist either. Both mean "not found" to the buyer.
+  if (
+    order.error instanceof ApiError &&
+    (order.error.status === 404 || order.error.status === 400)
+  ) {
     return (
       <StatusMessage title={es.order.notFoundTitle} hint={es.order.notFoundHint} heading="h1">
         {goToCatalog}

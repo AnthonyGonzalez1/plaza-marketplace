@@ -45,7 +45,9 @@ export function CheckoutPage() {
     onSuccess: (order) => {
       // The order page can show this order right away, without asking the API for it.
       queryClient.setQueryData(['order', order.id], order);
-      navigate(`/orders/${order.id}`);
+      // replace: the order page takes the place of the checkout page in the history, so the
+      // back button does not return to a checkout whose cart no longer exists.
+      navigate(`/orders/${order.id}`, { replace: true });
       // The server deleted the cart: forget its ID and mark the cached copy as outdated.
       forgetCartId();
       return queryClient.invalidateQueries({ queryKey: ['cart'] });
