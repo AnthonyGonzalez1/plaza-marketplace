@@ -65,6 +65,15 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: PLAZA_REDIS_HOST
               value: {{ .Release.Name }}-redis
+            - name: PLAZA_RABBITMQ_HOST
+              value: {{ .Release.Name }}-rabbitmq
+            - name: PLAZA_RABBITMQ_USER
+              value: {{ .Values.rabbitmq.user | quote }}
+            - name: PLAZA_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: RABBITMQ_PASSWORD
             - name: PLAZA_PAYMENT_URL
               value: http://{{ .Release.Name }}-payment-simulator:3001
             - name: PLAZA_PAYMENT_WEBHOOK_SECRET

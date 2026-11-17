@@ -20,4 +20,7 @@ metadata:
 type: Opaque
 stringData:
   POSTGRES_PASSWORD: {{ required "postgres.password is required (use --set postgres.password=...)" .Values.postgres.password | quote }}
+  RABBITMQ_PASSWORD: {{ required "rabbitmq.password is required (use --set rabbitmq.password=...)" .Values.rabbitmq.password | quote }}
+  # The same credentials as a connection URL, the form the notification service reads.
+  RABBITMQ_URL: {{ printf "amqp://%s:%s@%s-rabbitmq:5672" .Values.rabbitmq.user .Values.rabbitmq.password .Release.Name | quote }}
   PAYMENT_WEBHOOK_SECRET: {{ required "payments.webhookSecret is required (use --set payments.webhookSecret=...)" .Values.payments.webhookSecret | quote }}

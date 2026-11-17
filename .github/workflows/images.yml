@@ -28,6 +28,8 @@ jobs:
             context: web
           - name: plaza-payment-simulator
             context: services/payment-simulator
+          - name: plaza-notification-service
+            context: services/notification-service
     env:
       # Registry paths must be lowercase.
       IMAGE: ghcr.io/anthonygonzalez1/${{ matrix.name }}

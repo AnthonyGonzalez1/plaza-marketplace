@@ -18,5 +18,16 @@ payments:
   simulator:
     image: plaza-payment-simulator
 
+rabbitmq:
+  password: plaza
+
+notifications:
+  image: plaza-notification-service
+
+mailpit:
+  # Local inbox at http://plaza.localhost/mailpit
+  ingress:
+    enabled: true
+
 ingress:
   host: plaza.localhost
