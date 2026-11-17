@@ -23,6 +23,17 @@ services:
       timeout: 3s
       retries: 10
 
+  redis:
+    image: redis:8-alpine
+    # Carts only: no volume on purpose. If Redis restarts, carts are lost and nothing else.
+    ports:
+      - "${PLAZA_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   store-api:
     build: services/store-api
     environment:
@@ -30,6 +41,7 @@ services:
       PLAZA_DB_URL: jdbc:postgresql://postgres:5432/${PLAZA_DB_NAME:-plaza}
       PLAZA_DB_USER: ${PLAZA_DB_USER:-plaza}
       PLAZA_DB_PASSWORD: ${PLAZA_DB_PASSWORD:-plaza}
+      PLAZA_REDIS_HOST: redis
       PLAZA_CORS_ALLOWED_ORIGINS: ${PLAZA_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
     ports:
@@ -37,6 +49,8 @@ services:
     depends_on:
       postgres:
         # Wait until PostgreSQL accepts connections, not only until its container starts.
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   web:

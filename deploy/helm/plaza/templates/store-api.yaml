@@ -57,6 +57,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: POSTGRES_PASSWORD
+            - name: PLAZA_REDIS_HOST
+              value: {{ .Release.Name }}-redis
             - name: SPRING_PROFILES_ACTIVE
               value: {{ .Values.storeApi.springProfile | quote }}
             {{- if .Values.storeApi.corsAllowedOrigins }}

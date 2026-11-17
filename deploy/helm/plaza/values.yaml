@@ -47,6 +47,15 @@ postgres:
     limits:
       memory: 512Mi
 
+redis:
+  image: redis:8-alpine
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
 ingress:
   enabled: true
   # Which ingress controller handles this Ingress. Traefik in kind and in k3s.
