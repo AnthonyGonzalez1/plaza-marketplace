@@ -1,10 +1,11 @@
 # Overrides for the production k3s server. Step-by-step instructions: docs/deploy.md.
 #
-# Four values are NOT in this file and are passed at deploy time:
+# Five values are NOT in this file and are passed at deploy time:
 #   imageTag                 commit to deploy (CI publishes one image tag per commit)
 #   ingress.host             public host name of the server
 #   postgres.password        kept in a file on the server, never in git
 #   payments.webhookSecret   kept in the same file
+#   rabbitmq.password        kept in the same file
 
 # A commit tag never changes, so a node that already has the image does not download it again.
 imagePullPolicy: IfNotPresent
@@ -12,6 +13,12 @@ imagePullPolicy: IfNotPresent
 postgres:
   # k3s stores the volume on the server disk (its "local-path" storage class).
   storage: 5Gi
+
+# The demo is public and its emails only exist in this inbox, so visitors can see the email
+# their purchase produced. Buyers are told on the checkout page not to use a real address.
+mailpit:
+  ingress:
+    enabled: true
 
 ingress:
   tls:

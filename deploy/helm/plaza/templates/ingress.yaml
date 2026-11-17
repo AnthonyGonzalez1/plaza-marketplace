@@ -2,6 +2,7 @@
 # Entry point from outside the cluster. The ingress controller (Traefik) reads this object
 # and routes each request by host and path to a Service:
 #   /api, /swagger-ui, /v3/api-docs  -> store-api
+#   /mailpit (optional)              -> mailpit (inbox of the fake mail server)
 #   everything else                  -> web (the React app)
 # The browser sees a single origin, so no CORS is involved.
 apiVersion: networking.k8s.io/v1
@@ -37,6 +38,15 @@ spec:
             backend:
               service:
                 name: {{ $.Release.Name }}-store-api
+                port:
+                  name: http
+          {{- end }}
+          {{- if .Values.mailpit.ingress.enabled }}
+          - path: /mailpit
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-mailpit
                 port:
                   name: http
           {{- end }}

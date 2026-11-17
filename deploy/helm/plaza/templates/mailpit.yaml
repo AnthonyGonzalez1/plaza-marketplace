@@ -1,0 +1,71 @@
+{{- $selector := dict "root" . "component" "mailpit" }}
+# Fake mail server: it accepts every email over SMTP and shows it in a web inbox. Messages
+# live in memory, so no volume: restarting the pod empties the inbox.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-mailpit
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "plaza.selectorLabels" $selector | nindent 4 }}
+  ports:
+    - name: smtp
+      port: 1025
+      targetPort: smtp
+    - name: http
+      port: 8025
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mailpit
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "plaza.selectorLabels" $selector | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "plaza.selectorLabels" $selector | nindent 8 }}
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: mailpit
+          image: {{ .Values.mailpit.image | quote }}
+          ports:
+            - name: smtp
+              containerPort: 1025
+            - name: http
+              containerPort: 8025
+          env:
+            # Serve the inbox under /mailpit so the Ingress can route it by path.
+            - name: MP_WEBROOT
+              value: /mailpit
+            # Keep only the newest messages: the inbox lives in memory.
+            - name: MP_MAX_MESSAGES
+              value: "200"
+          readinessProbe:
+            httpGet:
+              path: /mailpit/readyz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /mailpit/livez
+              port: http
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.mailpit.resources | nindent 12 }}
+          securityContext:
+            # The image runs as root by default; it needs no privileges, so run it as an
+            # ordinary numeric user.
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false

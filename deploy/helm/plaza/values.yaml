@@ -62,6 +62,44 @@ payments:
       limits:
         memory: 192Mi
 
+rabbitmq:
+  image: rabbitmq:4-management-alpine
+  user: plaza
+  # Required. Never commit a real one: pass it at deploy time like postgres.password.
+  password: ""
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
+
+notifications:
+  image: ghcr.io/anthonygonzalez1/plaza-notification-service
+  # Sender shown in the emails.
+  mailFrom: "Plaza Marketplace <no-reply@plaza.localhost>"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 192Mi
+
+# Fake mail server: catches every email in a web inbox, nothing is delivered for real.
+mailpit:
+  image: axllent/mailpit:v1.33.1
+  # Publishes the inbox at /mailpit through the Ingress. It shows the addresses typed by
+  # whoever tried the demo, so it is off unless an environment turns it on.
+  ingress:
+    enabled: false
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
 redis:
   image: redis:8-alpine
   resources:

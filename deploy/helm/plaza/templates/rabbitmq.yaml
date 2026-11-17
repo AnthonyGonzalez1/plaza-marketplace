@@ -1,0 +1,99 @@
+{{- $selector := dict "root" . "component" "rabbitmq" }}
+# Message broker. A StatefulSet with a volume, like PostgreSQL and unlike Redis: queues hold
+# events that are not processed yet (and the dead-letter queue), and they must survive a
+# restart of the pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-rabbitmq
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "plaza.selectorLabels" $selector | nindent 4 }}
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: amqp
+    - name: management
+      port: 15672
+      targetPort: management
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-rabbitmq
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "plaza.selectorLabels" $selector | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "plaza.selectorLabels" $selector | nindent 8 }}
+    spec:
+      # Kubernetes would inject RABBITMQ_PORT=tcp://... for this pod's own Service, a name the
+      # broker reads as its own setting. See the same line in store-api.yaml.
+      enableServiceLinks: false
+      securityContext:
+        # Lets the non-root user of the image (id 100, group 101) write to the volume.
+        fsGroup: 101
+      containers:
+        - name: rabbitmq
+          image: {{ .Values.rabbitmq.image | quote }}
+          ports:
+            - name: amqp
+              containerPort: 5672
+            - name: management
+              containerPort: 15672
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              value: {{ .Values.rabbitmq.user | quote }}
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: RABBITMQ_PASSWORD
+            # RabbitMQ names its data folder after the host name. A fixed node name keeps the
+            # data found again after the pod is recreated.
+            - name: RABBITMQ_NODENAME
+              value: rabbit@localhost
+          # The broker takes a while to boot; the checks below use its own diagnostics tool.
+          startupProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 18
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+            periodSeconds: 20
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            {{- toYaml .Values.rabbitmq.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/rabbitmq
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.rabbitmq.storage }}

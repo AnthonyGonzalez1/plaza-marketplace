@@ -52,6 +52,7 @@ jobs:
             --set ingress.host=plaza.example.com
             --set postgres.password=ci
             --set payments.webhookSecret=ci
+            --set rabbitmq.password=ci
         run: |
           helm lint deploy/helm/plaza $PROD_ARGS --strict
           helm template plaza deploy/helm/plaza $PROD_ARGS > /dev/null

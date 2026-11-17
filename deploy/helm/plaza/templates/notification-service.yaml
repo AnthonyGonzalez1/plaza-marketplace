@@ -1,0 +1,65 @@
+{{- $selector := dict "root" . "component" "notification-service" }}
+# Consumes order events from RabbitMQ and emails the buyer. Nobody calls it, so it has no
+# Service: its HTTP port only answers the health probes of the kubelet.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-notification-service
+  labels:
+    {{- include "plaza.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "plaza.selectorLabels" $selector | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "plaza.selectorLabels" $selector | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: notification-service
+          image: "{{ .Values.notifications.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3002
+          env:
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: RABBITMQ_URL
+            - name: REDIS_URL
+              value: redis://{{ .Release.Name }}-redis:6379
+            - name: SMTP_HOST
+              value: {{ .Release.Name }}-mailpit
+            - name: SMTP_PORT
+              value: "1025"
+            - name: MAIL_FROM
+              value: {{ .Values.notifications.mailFrom | quote }}
+            # Base of the links written in the emails: the public address of the web app.
+            - name: WEB_BASE_URL
+              value: {{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.host }}
+          # /health answers 503 while the service is not connected to RabbitMQ. Readiness
+          # uses it; liveness only restarts the pod after a long disconnection, because the
+          # service reconnects by itself and a restart would not fix a broker that is down.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            failureThreshold: 15
+          resources:
+            {{- toYaml .Values.notifications.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
