@@ -3,6 +3,7 @@ package com.plaza.store.catalog;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.plaza.store.TestcontainersConfiguration;
+import com.plaza.store.inventory.InventoryRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -1,5 +1,7 @@
 package com.plaza.store.catalog;
 
+import com.plaza.store.inventory.Inventory;
+import com.plaza.store.inventory.InventoryRepository;
 import com.plaza.store.shared.NotFoundException;
 import com.plaza.store.shared.PageParams;
 import com.plaza.store.shared.PageResponse;

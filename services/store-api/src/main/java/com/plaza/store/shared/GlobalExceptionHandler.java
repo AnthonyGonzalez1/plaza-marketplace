@@ -29,6 +29,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ProblemDetail handleConflict(ConflictException exception) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        // Extra fields next to the standard ones, e.g. "productId": 12.
+        exception.getProperties().forEach(problem::setProperty);
+        return problem;
+    }
+
     // Anything unexpected: log the full error for us, but do not leak internals to the client.
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception exception) {

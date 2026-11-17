@@ -1,4 +1,4 @@
-package com.plaza.store.catalog;
+package com.plaza.store.inventory;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
