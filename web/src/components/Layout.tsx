@@ -1,11 +1,16 @@
 import { Link, Outlet } from 'react-router';
 import { es } from '../i18n/es';
+import { useCart } from '../lib/useCart';
 
 const REPO_URL = 'https://github.com/AnthonyGonzalez1/plaza-marketplace';
 const API_DOCS_URL = '/swagger-ui.html';
 
 /** Page frame shared by every route: header, main area (the current page) and footer. */
 export function Layout() {
+  // Same query as the cart page (same cache key), so the badge updates with every change.
+  const { cart } = useCart();
+  const totalItems = cart?.totalItems ?? 0;
+
   return (
     <div className="layout">
       <a className="skip-link" href="#main">
@@ -19,6 +24,12 @@ export function Layout() {
             <span>{es.brand}</span>
           </Link>
           <p className="site-header__tagline">{es.tagline}</p>
+          {/* The visible text is "Carrito" plus a number; aria-label gives screen readers
+              the full sentence ("Carrito, 2 unidades"). */}
+          <Link className="cart-link" to="/cart" aria-label={es.cart.headerLinkLabel(totalItems)}>
+            <span>{es.cart.headerLink}</span>
+            <span className="cart-link__count">{totalItems}</span>
+          </Link>
         </div>
       </header>
 

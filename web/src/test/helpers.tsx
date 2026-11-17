@@ -3,22 +3,32 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router';
 import { vi } from 'vitest';
+import type { Cart, CartItem } from '../api/cart';
 import type { Page, ProductDetail, ProductSummary } from '../api/catalog';
 import { App } from '../App';
 
+/** Method and JSON body of a request, for the tests that check what was sent. */
+export interface SentRequest {
+  method: string;
+  body: unknown;
+}
+
 /**
- * Replaces the global `fetch`. The handler receives the requested URL and returns either the
- * JSON body of a 200 response or a full Response (see `problemResponse`).
+ * Replaces the global `fetch`. The handler receives the requested URL (and, as a second
+ * argument, the method and body) and returns either the JSON body of a 200 response or a
+ * full Response (see `problemResponse`).
  * Returns the list of requested URLs so tests can assert on what was asked.
  */
-export function mockFetch(handler: (url: URL) => unknown): URL[] {
+export function mockFetch(handler: (url: URL, request: SentRequest) => unknown): URL[] {
   const requests: URL[] = [];
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (input: string) => {
+    vi.fn(async (input: string, init?: RequestInit) => {
       const url = new URL(input, 'http://localhost');
       requests.push(url);
-      const result = handler(url);
+      const method = init?.method ?? 'GET';
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined;
+      const result = handler(url, { method, body });
       return result instanceof Response ? result : Response.json(result);
     }),
   );
@@ -55,6 +65,33 @@ export function makePage(
   overrides: Partial<Page<ProductSummary>> = {},
 ): Page<ProductSummary> {
   return { items, page: 0, size: 12, totalItems: items.length, totalPages: 1, ...overrides };
+}
+
+export function makeCartItem(overrides: Partial<CartItem> = {}): CartItem {
+  const item: CartItem = {
+    productId: 1,
+    name: 'Café de origen Huila',
+    imageUrl: null,
+    unitPrice: 32000,
+    quantity: 1,
+    available: 12,
+    lineTotal: 0,
+    ...overrides,
+  };
+  // Unless the test fixes it, the line total follows the price and the quantity.
+  item.lineTotal = overrides.lineTotal ?? item.unitPrice * item.quantity;
+  return item;
+}
+
+/** A cart with the given lines; the totals are calculated like the API does. */
+export function makeCart(items: CartItem[] = [], id = 'cart-1'): Cart {
+  return {
+    id,
+    items,
+    totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
+    total: items.reduce((sum, item) => sum + item.lineTotal, 0),
+    currency: 'COP',
+  };
 }
 
 /**

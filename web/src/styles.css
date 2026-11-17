@@ -1,10 +1,11 @@
 /*
  * Plaza styles: one plain stylesheet, no framework.
  *
- *   1. Design tokens (colours, spacing, type)   5. Catalog: filters, grid, cards
- *   2. Base elements                            6. Product page
- *   3. Layout: header, main, footer             7. Status messages and skeletons
- *   4. Shared pieces: buttons, inputs, badges   8. Reduced motion
+ *   1. Design tokens (colours, spacing, type)   6. Product page
+ *   2. Base elements                            7. Cart, checkout and order
+ *   3. Layout: header, main, footer             8. Status messages and skeletons
+ *   4. Shared pieces: buttons, inputs, badges   9. Reduced motion
+ *   5. Catalog: filters, grid, cards
  *
  * Every colour and distance comes from a custom property defined in section 1, so the dark
  * theme only has to redefine the colour tokens.
@@ -86,7 +87,9 @@ body {
 h1,
 h2,
 p,
-ul {
+ul,
+dl,
+dd {
   margin: 0;
 }
 
@@ -215,6 +218,33 @@ select {
   stroke: var(--color-on-accent);
   stroke-width: 2;
   stroke-linejoin: round;
+}
+
+.cart-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cart-link:hover {
+  border-color: var(--color-text-muted);
+}
+
+.cart-link__count {
+  min-width: 1.5rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .site-main {
@@ -355,6 +385,19 @@ select {
 .badge--accent {
   background: var(--color-accent-soft);
   color: var(--color-accent);
+}
+
+/* Validation and request errors shown next to a form. */
+.form-error {
+  color: var(--color-accent);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.loading-text {
+  margin-block: var(--space-7);
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
 .price {
@@ -637,6 +680,15 @@ select {
   font-size: 0.875rem;
 }
 
+.add-to-cart__quantity {
+  width: 7rem;
+}
+
+/* Empty until a product is added: take no space meanwhile. */
+.add-to-cart__confirmation:empty {
+  display: none;
+}
+
 .product-detail__description {
   margin-top: var(--space-4);
   padding-top: var(--space-5);
@@ -654,7 +706,232 @@ select {
   white-space: pre-line;
 }
 
-/* 7. Status messages and skeletons -------------------------------------------------------- */
+/* 7. Cart, checkout and order ------------------------------------------------------------- */
+
+.cart-lines {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Phones: picture and text on the first row, then quantity, line total and "remove". */
+.cart-line {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) auto;
+  grid-template-areas:
+    'image info info'
+    'quantity total remove';
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+}
+
+.cart-line .product-image {
+  grid-area: image;
+  aspect-ratio: 1;
+  border-radius: var(--radius-small);
+}
+
+.cart-line .product-image--placeholder {
+  font-size: 2rem;
+}
+
+.cart-line__info {
+  grid-area: info;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.cart-line__name {
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.cart-line__unit-price {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.cart-line__warning {
+  color: var(--color-accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.cart-line__total {
+  grid-area: total;
+  text-align: right;
+}
+
+.cart-line__remove {
+  grid-area: remove;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.cart-line__remove:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.quantity-control {
+  grid-area: quantity;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.quantity-control__button {
+  width: 2.75rem;
+  padding: 0;
+  font-size: 1.25rem;
+}
+
+.quantity-control__value {
+  min-width: 2ch;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* Wider screens: everything on one row. */
+@media (min-width: 48rem) {
+  .cart-line {
+    grid-template-columns: 5rem minmax(0, 1fr) auto 8rem auto;
+    grid-template-areas: 'image info quantity total remove';
+    gap: var(--space-5);
+  }
+}
+
+.cart-lines + .form-error {
+  margin-top: var(--space-3);
+}
+
+.cart-footer {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.cart-footer__total,
+.summary__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-weight: 600;
+}
+
+.cart-footer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3) var(--space-5);
+}
+
+.checkout__header {
+  margin-top: var(--space-4);
+}
+
+.checkout,
+.order {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 40rem;
+}
+
+.checkout__form {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+}
+
+.checkout__form .field {
+  width: 100%;
+}
+
+.checkout__form .field p {
+  margin-top: var(--space-2);
+}
+
+.checkout__hint {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.summary {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+}
+
+.summary h2 {
+  margin-bottom: var(--space-3);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.summary__lines {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.summary__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.summary__quantity {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.summary__total {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.order__details {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.order__details dt {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* The order number is a long UUID: let it wrap on narrow screens. */
+.order__id {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.order__notice {
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  background: var(--color-accent-soft);
+}
+
+@media (min-width: 30rem) {
+  .order__details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 8. Status messages and skeletons -------------------------------------------------------- */
 
 .status-message {
   display: grid;
@@ -715,7 +992,7 @@ select {
   }
 }
 
-/* 8. Reduced motion ----------------------------------------------------------------------- */
+/* 9. Reduced motion ----------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   *,

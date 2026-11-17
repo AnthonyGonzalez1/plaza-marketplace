@@ -47,12 +47,80 @@ export const es = {
     inStock: (available: number) => `${available} disponibles`,
     soldBy: 'Vendido por',
     description: 'Descripción',
+    quantityLabel: 'Cantidad',
     addToCart: 'Agregar al carrito',
-    comingSoon: 'Próximamente: el carrito llegará en una próxima versión.',
+    adding: 'Agregando…',
+    addedToCart: (quantity: number) =>
+      quantity === 1
+        ? 'Agregado. Tienes 1 unidad de este producto en el carrito.'
+        : `Agregado. Tienes ${quantity} unidades de este producto en el carrito.`,
+    viewCart: 'Ver carrito',
+    soldOutHint: 'Este producto está agotado por ahora.',
+    maxInCartHint: 'Ya tienes en el carrito todas las unidades que puedes pedir.',
     backToCatalog: 'Volver al catálogo',
     loading: 'Cargando producto…',
     notFoundTitle: 'Este producto no existe',
     notFoundHint: 'Puede que la tienda lo haya retirado o que el enlace esté mal escrito.',
+  },
+
+  cart: {
+    title: 'Carrito',
+    headerLink: 'Carrito',
+    headerLinkLabel: (totalItems: number) =>
+      totalItems === 1 ? 'Carrito, 1 unidad' : `Carrito, ${totalItems} unidades`,
+    loading: 'Cargando carrito…',
+    listLabel: 'Productos en el carrito',
+    unitPrice: (price: string) => `${price} c/u`,
+    quantityLabel: 'Cantidad',
+    decrease: (name: string) => `Quitar una unidad de ${name}`,
+    increase: (name: string) => `Agregar una unidad de ${name}`,
+    remove: 'Eliminar',
+    removeLabel: (name: string) => `Eliminar ${name} del carrito`,
+    stockWarning: (available: number) =>
+      available === 0
+        ? 'Este producto se agotó. Elimínalo para poder continuar.'
+        : available === 1
+          ? 'Solo queda 1 unidad. Reduce la cantidad para poder continuar.'
+          : `Solo quedan ${available} unidades. Reduce la cantidad para poder continuar.`,
+    total: 'Total',
+    checkout: 'Continuar con la compra',
+    continueShopping: 'Seguir comprando',
+    emptyTitle: 'Tu carrito está vacío',
+    emptyHint: 'Agrega productos desde el catálogo y aparecerán aquí.',
+  },
+
+  checkout: {
+    title: 'Finalizar compra',
+    summaryTitle: 'Resumen del pedido',
+    lineQuantity: (quantity: number) => `× ${quantity}`,
+    emailLabel: 'Correo electrónico',
+    emailHint: 'Compras como invitado: solo usamos tu correo para identificar el pedido.',
+    emailRequired: 'Escribe tu correo electrónico.',
+    emailInvalid: 'Escribe un correo válido, por ejemplo nombre@correo.com.',
+    submit: 'Crear pedido',
+    submitting: 'Creando pedido…',
+    stockProblem:
+      'Algún producto ya no tiene suficientes unidades disponibles. Revisa tu carrito y ajusta las cantidades.',
+    backToCart: 'Volver al carrito',
+  },
+
+  order: {
+    title: 'Tu pedido',
+    loading: 'Cargando pedido…',
+    numberLabel: 'Número de pedido',
+    statusLabel: 'Estado',
+    status: {
+      PENDING_PAYMENT: 'Pendiente de pago',
+      PAID: 'Pagado',
+      CANCELLED: 'Cancelado',
+    },
+    emailLabel: 'Correo electrónico',
+    createdAtLabel: 'Fecha',
+    itemsTitle: 'Productos',
+    reservedUntil: (date: string) => `Tus productos están reservados hasta el ${date}.`,
+    paymentComingSoon: 'El pago en línea llegará en una próxima versión.',
+    notFoundTitle: 'Este pedido no existe',
+    notFoundHint: 'Revisa que el enlace esté completo y bien escrito.',
   },
 
   errors: {

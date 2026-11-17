@@ -8,6 +8,8 @@ export interface Problem {
   status?: number;
   detail?: string;
   instance?: string;
+  /** Extra field the API adds to stock errors (409): the product that ran out. */
+  productId?: number;
 }
 
 export class ApiError extends Error {
@@ -47,6 +49,33 @@ export async function getJson<T>(
   const response = await fetch(path + buildQueryString(params), {
     headers: { Accept: 'application/json' },
     signal,
+  });
+
+  if (!response.ok) {
+    throw new ApiError(response.status, await readProblem(response));
+  }
+  return (await response.json()) as T;
+}
+
+/**
+ * Sends a request that changes something on the server (POST, PUT, DELETE) and returns the
+ * JSON answer. When a body is given it is sent as JSON.
+ */
+export async function sendJson<T>(
+  method: 'POST' | 'PUT' | 'DELETE',
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (body !== undefined) {
+    // Tells the server how to read the body. Without it the API answers 415.
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 
   if (!response.ok) {
