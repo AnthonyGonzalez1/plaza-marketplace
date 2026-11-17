@@ -144,14 +144,19 @@ kubectl get clusterissuer         # both READY True after a few seconds
 
 ## 6. First deploy (SSH)
 
-1. Create the secrets **on the server**: the database password and the secret that signs
-   payment webhooks. They are never typed in a chat, committed, or left in the shell history:
+1. Create the secrets **on the server**: the database password, the secret that signs
+   payment webhooks and the message broker password. They are never typed in a chat,
+   committed, or left in the shell history:
 
    ```bash
    umask 077
-   printf 'postgres:\n  password: "%s"\npayments:\n  webhookSecret: "%s"\n' \
-     "$(openssl rand -hex 24)" "$(openssl rand -hex 32)" > ~/plaza-secrets.yaml
+   printf 'postgres:\n  password: "%s"\npayments:\n  webhookSecret: "%s"\nrabbitmq:\n  password: "%s"\n' \
+     "$(openssl rand -hex 24)" "$(openssl rand -hex 32)" "$(openssl rand -hex 24)" \
+     > ~/plaza-secrets.yaml
    ```
+
+   If the file already exists from an earlier version, add the missing entries by hand; do
+   not regenerate `postgres.password`.
 
    PostgreSQL reads this password only when it initializes an empty volume. Changing the file
    later does **not** change the password of an existing database.
@@ -195,7 +200,8 @@ kubectl get clusterissuer         # both READY True after a few seconds
    If the browser still shows the staging certificate, delete the Secret so it is issued
    again: `kubectl -n plaza delete secret plaza-tls`.
 
-5. Open `https://<host>` and `https://<host>/swagger-ui.html` in a browser.
+5. Open `https://<host>` and `https://<host>/swagger-ui.html` in a browser. The emails of the
+   demo are visible at `https://<host>/mailpit` (a fake mail server; nothing is delivered).
 
 ## 7. Deploy a new version
 
