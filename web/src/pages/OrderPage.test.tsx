@@ -79,6 +79,17 @@ describe('OrderPage', () => {
     expect(payments).toHaveLength(0);
   });
 
+  it('treats an order id that is not valid as an order that does not exist', async () => {
+    mockFetch(() => problemResponse(400, "Failed to convert 'orderId' with value: 'nope'"));
+    renderApp('/orders/order-1');
+
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      'Este pedido no existe',
+    );
+    // The technical message of the API is not shown to the buyer.
+    expect(screen.queryByText(/Failed to convert/)).not.toBeInTheDocument();
+  });
+
   it('shows the other statuses in Spanish, without the reservation note', async () => {
     mockFetch(() => makeOrder({ status: 'PAID' }));
     renderApp('/orders/order-1');

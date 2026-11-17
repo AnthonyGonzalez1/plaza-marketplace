@@ -94,7 +94,8 @@ export const es = {
     summaryTitle: 'Resumen del pedido',
     lineQuantity: (quantity: number) => `× ${quantity}`,
     emailLabel: 'Correo electrónico',
-    emailHint: 'Compras como invitado: solo usamos tu correo para identificar el pedido.',
+    emailHint:
+      'Tienda de demostración: no se envían correos reales. Usa un correo de prueba; el mensaje de confirmación queda visible en una bandeja pública de demostración.',
     emailRequired: 'Escribe tu correo electrónico.',
     emailInvalid: 'Escribe un correo válido, por ejemplo nombre@correo.com.',
     submit: 'Crear pedido',
@@ -117,7 +118,8 @@ export const es = {
     emailLabel: 'Correo electrónico',
     createdAtLabel: 'Fecha',
     itemsTitle: 'Productos',
-    reservedUntil: (date: string) => `Tus productos están reservados hasta el ${date}.`,
+    // No final period: the time already ends in "a. m." or "p. m.".
+    reservedUntil: (date: string) => `Tus productos están reservados hasta el ${date}`,
     payment: {
       title: 'Pago',
       payNow: 'Pagar ahora',
