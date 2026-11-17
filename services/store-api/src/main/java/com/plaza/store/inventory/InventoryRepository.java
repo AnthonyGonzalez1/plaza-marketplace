@@ -1,4 +1,4 @@
-package com.plaza.store.catalog;
+package com.plaza.store.inventory;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
