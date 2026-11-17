@@ -9,4 +9,5 @@ window.scrollTo = vi.fn();
 afterEach(() => {
   cleanup(); // unmount what the test rendered
   vi.unstubAllGlobals(); // restore the real fetch
+  window.localStorage.clear(); // forget the cart ID a test may have stored
 });

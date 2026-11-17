@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useParams } from 'react-router';
 import { getProduct } from '../api/catalog';
 import { ApiError } from '../api/http';
+import { AddToCartForm } from '../components/AddToCartForm';
 import { ProductImage } from '../components/ProductImage';
 import { StatusMessage } from '../components/StatusMessage';
 import { StockBadge } from '../components/StockBadge';
@@ -100,19 +101,8 @@ export function ProductDetailPage() {
             )}
           </p>
 
-          <div className="product-detail__buy">
-            <button
-              className="button button--primary button--large"
-              type="button"
-              disabled
-              aria-describedby="cart-hint"
-            >
-              {es.product.addToCart}
-            </button>
-            <p id="cart-hint" className="product-detail__hint">
-              {es.product.comingSoon}
-            </p>
-          </div>
+          {/* key: a different product starts with a fresh form (quantity 1, no message). */}
+          <AddToCartForm key={product.data.id} productId={product.data.id} available={available} />
 
           <section className="product-detail__description">
             <h2>{es.product.description}</h2>
