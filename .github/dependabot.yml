@@ -24,6 +24,19 @@ updates:
       web-dependencies:
         patterns: ["*"]
 
+  - package-ecosystem: docker
+    directory: /services/payment-simulator
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /services/payment-simulator
+    schedule:
+      interval: weekly
+    groups:
+      payment-simulator-dependencies:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -42,6 +42,8 @@ services:
       PLAZA_DB_USER: ${PLAZA_DB_USER:-plaza}
       PLAZA_DB_PASSWORD: ${PLAZA_DB_PASSWORD:-plaza}
       PLAZA_REDIS_HOST: redis
+      PLAZA_PAYMENT_URL: http://payment-simulator:3001
+      PLAZA_PAYMENT_WEBHOOK_SECRET: ${PLAZA_PAYMENT_WEBHOOK_SECRET:-local-dev-webhook-secret}
       PLAZA_CORS_ALLOWED_ORIGINS: ${PLAZA_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
     ports:
@@ -52,6 +54,18 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  # Fake payment gateway. store-api asks it to charge an order; a moment later it calls the
+  # webhook of store-api with the result, signed with the secret both services share.
+  payment-simulator:
+    build: services/payment-simulator
+    environment:
+      WEBHOOK_URL: http://store-api:8080/api/v1/webhooks/payments
+      WEBHOOK_SECRET: ${PLAZA_PAYMENT_WEBHOOK_SECRET:-local-dev-webhook-secret}
+      PAYMENT_DELAY_MS: ${PLAZA_PAYMENT_DELAY_MS:-2000}
+      DUPLICATE_WEBHOOKS: ${PLAZA_PAYMENT_DUPLICATE_WEBHOOKS:-false}
+    ports:
+      - "${PLAZA_PAYMENT_PORT:-3001}:3001"
 
   web:
     build: web

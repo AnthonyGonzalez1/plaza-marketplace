@@ -1,0 +1,57 @@
+name: payment-simulator
+
+on:
+  pull_request:
+    paths:
+      - 'services/payment-simulator/**'
+      - '.github/workflows/payment-simulator.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'services/payment-simulator/**'
+      - '.github/workflows/payment-simulator.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payment-simulator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/payment-simulator
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads the pnpm version from the "packageManager" field of package.json.
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: services/payment-simulator/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: services/payment-simulator/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

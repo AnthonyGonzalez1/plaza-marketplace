@@ -1,9 +1,10 @@
 # Overrides for the production k3s server. Step-by-step instructions: docs/deploy.md.
 #
-# Three values are NOT in this file and are passed at deploy time:
-#   imageTag            commit to deploy (CI publishes one image tag per commit)
-#   ingress.host        public host name of the server
-#   postgres.password   kept in a file on the server, never in git
+# Four values are NOT in this file and are passed at deploy time:
+#   imageTag                 commit to deploy (CI publishes one image tag per commit)
+#   ingress.host             public host name of the server
+#   postgres.password        kept in a file on the server, never in git
+#   payments.webhookSecret   kept in the same file
 
 # A commit tag never changes, so a node that already has the image does not download it again.
 imagePullPolicy: IfNotPresent

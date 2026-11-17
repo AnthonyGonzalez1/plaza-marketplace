@@ -20,3 +20,4 @@ metadata:
 type: Opaque
 stringData:
   POSTGRES_PASSWORD: {{ required "postgres.password is required (use --set postgres.password=...)" .Values.postgres.password | quote }}
+  PAYMENT_WEBHOOK_SECRET: {{ required "payments.webhookSecret is required (use --set payments.webhookSecret=...)" .Values.payments.webhookSecret | quote }}

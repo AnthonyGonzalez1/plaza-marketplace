@@ -47,6 +47,21 @@ postgres:
     limits:
       memory: 512Mi
 
+payments:
+  # Required. Secret shared by store-api and the payment simulator to sign payment webhooks.
+  # Never commit a real one: pass it at deploy time like postgres.password.
+  webhookSecret: ""
+  simulator:
+    image: ghcr.io/anthonygonzalez1/plaza-payment-simulator
+    # Milliseconds between accepting a payment and sending its result.
+    delayMs: 2000
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        memory: 192Mi
+
 redis:
   image: redis:8-alpine
   resources:
