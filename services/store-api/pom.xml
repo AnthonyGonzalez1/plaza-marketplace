@@ -17,7 +17,7 @@
   <properties>
     <java.version>25</java.version>
     <!-- Not managed by the Spring Boot BOM, so the versions are pinned here. -->
-    <springdoc.version>3.2.0</springdoc.version>
+    <springdoc.version>3.2.1</springdoc.version>
     <spotless.version>3.11.0</spotless.version>
     <google-java-format.version>2.0.0</google-java-format.version>
   </properties>
